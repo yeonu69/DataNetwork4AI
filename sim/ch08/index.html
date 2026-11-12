@@ -1,0 +1,34 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wi-Fi 채널 배치와 로밍 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">8장 시뮬레이터</div><h1>Wi-Fi 채널 배치와 로밍 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>AP 세 대의 2.4 GHz 채널을 고릅니다(1~13).</li><li>스펙트럼 그림에서 채널 폭(20 MHz)이 겹치는 AP가 빨갛게 표시되는지 봅니다.</li><li>1, 6, 11처럼 5칸 이상 떨어뜨려 겹침을 없애 봅니다.</li><li>아래 슬라이더로 스마트폰을 AP1에서 AP2 쪽으로 옮기며 신호 세기(RSSI)와 로밍 시점을 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>AP1 <select id="c0"></select></label><label>AP2 <select id="c1"></select></label><label>AP3 <select id="c2"></select></label><button class="sec" id="best">추천: 1·6·11</button></div>
+<canvas id="cv" width="760" height="220"></canvas><p id="ov"></p>
+<h2 style="font-size:15px;color:#6b4fbb">스마트폰 이동과 로밍</h2>
+<div class="row"><label>위치 <input type="range" id="x" min="0" max="100" value="20"></label><label><input type="checkbox" id="wall"> 가운데 콘크리트 벽</label></div>
+<canvas id="cv2" width="760" height="150"></canvas>
+<div class="row"><span class="pill">연결 AP</span><b id="cur" class="big"></b>&nbsp;<span class="pill">RSSI</span><b id="rs"></b>&nbsp;<span class="pill">예상 속도</span><b id="rate"></b></div></div>
+
+<div class="key"><b>핵심 3줄</b><br>• 2.4 GHz 채널은 5 MHz 간격인데 한 채널이 약 20 MHz를 쓰므로 이웃 채널끼리 겹칩니다. 겹치지 않는 조합은 1, 6, 11입니다.<br>• 겹치는 채널의 AP는 서로 간섭이 되어 함께 느려지므로, AP를 여러 대 둘 때는 채널을 엇갈려 배치합니다.<br>• 단말은 지금 AP의 신호가 약해지면(예: -70 dBm 아래) 더 센 AP로 옮겨 갑니다. 이것이 로밍입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const C=["#6b4fbb","#e6457a","#2e8b57"];for(let i=0;i<3;i++){const s=document.getElementById('c'+i);for(let c=1;c<=13;c++)s.add(new Option("채널 "+c,c));s.value=[1,3,6][i];s.onchange=spec}
+const g=cv.getContext('2d'),g2=cv2.getContext('2d');
+function spec(){const ch=[0,1,2].map(i=>+document.getElementById('c'+i).value),W=760,H=220;g.clearRect(0,0,W,H);const X=f=>30+(f-2400)/(2490-2400)*(W-60);
+g.fillStyle="#333";g.font="11px sans-serif";for(let c=1;c<=13;c++){const f=2407+5*c;g.fillText(c,X(f)-3,H-6)}g.fillText("2.4 GHz 채널 번호",W-120,14);
+const bad=new Set();for(let i=0;i<3;i++)for(let j=i+1;j<3;j++)if(Math.abs(ch[i]-ch[j])<5){bad.add(i);bad.add(j)}
+ch.forEach((c,i)=>{const f=2407+5*c;g.beginPath();g.moveTo(X(f-11),H-24);g.bezierCurveTo(X(f-8),40+i*12,X(f+8),40+i*12,X(f+11),H-24);g.fillStyle=C[i]+"40";g.fill();g.strokeStyle=bad.has(i)?"#d9534f":C[i];g.lineWidth=bad.has(i)?4:2;g.stroke();g.fillStyle=C[i];g.font="bold 13px sans-serif";g.fillText("AP"+(i+1),X(f)-12,34+i*12)});
+const pairs=[];for(let i=0;i<3;i++)for(let j=i+1;j<3;j++)if(Math.abs(ch[i]-ch[j])<5)pairs.push(`AP${i+1}(${ch[i]})↔AP${j+1}(${ch[j]})`);
+ov.innerHTML=pairs.length?`<span class="bad">겹침 ${pairs.length}쌍</span> ${pairs.join(', ')} · 채널 차이가 5 미만이면 주파수가 겹칩니다.`:'<span class="ok">겹침 없음</span> 세 AP가 서로 간섭하지 않습니다.'}
+best.onclick=()=>{[1,6,11].forEach((v,i)=>document.getElementById('c'+i).value=v);spec()};
+let assoc=0;function rssi(d,w){return -30-28*Math.log10(Math.max(1,d))-(w?12:0)}
+function roam(){const W=760,H=150,p=+x.value,d1=p*0.4+1,d2=(100-p)*0.4+1,wl=wall.checked;const r1=rssi(d1,wl&&p>50),r2=rssi(d2,wl&&p<50);
+if(assoc==0&&r1<-70&&r2>r1)assoc=1;if(assoc==1&&r2<-70&&r1>r2)assoc=0;const r=assoc?r2:r1;
+g2.clearRect(0,0,W,H);const X=v=>40+v/100*(W-80);if(wl){g2.fillStyle="#999";g2.fillRect(X(50)-4,10,8,H-40)}
+[[0,"AP1"],[100,"AP2"]].forEach(([v,t],i)=>{g2.fillStyle=C[i];g2.fillRect(X(v)-14,H-50,28,22);g2.fillStyle="#fff";g2.font="bold 11px sans-serif";g2.fillText(t,X(v)-11,H-35)});
+g2.strokeStyle=C[assoc];g2.setLineDash([5,4]);g2.beginPath();g2.moveTo(X(assoc?100:0),H-50);g2.lineTo(X(p),H-90);g2.stroke();g2.setLineDash([]);
+g2.font="26px sans-serif";g2.fillText("📱",X(p)-13,H-80);
+g2.fillStyle="#333";g2.font="12px sans-serif";g2.fillText(`AP1 ${r1.toFixed(0)} dBm`,10,18);g2.fillText(`AP2 ${r2.toFixed(0)} dBm`,W-110,18);
+cur.textContent="AP"+(assoc+1);rs.innerHTML=r.toFixed(0)+" dBm "+(r>-60?'<span class="ok">좋음</span>':r>-70?'보통':'<span class="bad">약함</span>');
+rate.textContent=r>-55?"약 600 Mbps":r>-62?"약 300 Mbps":r>-68?"약 120 Mbps":r>-75?"약 30 Mbps":"약 6 Mbps"}
+x.oninput=roam;wall.onchange=roam;spec();roam();
+</script></body></html>

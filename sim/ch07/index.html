@@ -1,0 +1,29 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>스위치 MAC 주소 학습 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">7장 시뮬레이터</div><h1>스위치 MAC 주소 학습 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>보내는 PC와 받는 PC를 고르고 [프레임 보내기]를 누릅니다.</li><li>스위치가 출발지 MAC을 MAC 주소 테이블에 적는 것(학습)을 확인합니다.</li><li>목적지 MAC이 테이블에 없으면 모든 포트로 보내고(플러딩), 있으면 그 포트로만 보냅니다(포워딩).</li><li>[허브로 바꾸기]를 눌러 허브는 언제나 모든 포트로 뿌린다는 점과 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><label>보내는 PC <select id="src"></select></label><label>받는 PC <select id="dst"></select></label></div>
+<div class="row"><button id="go">프레임 보내기</button><button class="sec" id="hub">허브로 바꾸기</button><button class="sec" id="rs">테이블 비우기</button></div>
+<svg class="stage" id="st" viewBox="0 0 760 270"></svg>
+<div class="row" style="align-items:flex-start;gap:14px"><div style="flex:1;min-width:240px"><b>MAC 주소 테이블</b><table id="tb"></table></div><div style="flex:1;min-width:240px"><b>기록</b><div class="log" id="log"></div></div></div></div>
+
+<div class="key"><b>핵심 3줄</b><br>• 스위치는 프레임의 출발지 MAC을 보고 "이 주소는 이 포트에 있다"를 배웁니다.<br>• 목적지를 모르면 플러딩, 알면 그 포트로만 포워딩하므로 다른 PC는 방해받지 않습니다.<br>• 브로드캐스트(ff:ff:ff:ff:ff:ff)는 스위치도 모든 포트로 보냅니다. 이 범위가 브로드캐스트 도메인입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const PC=[["PC-A","aa:aa:aa:00:00:0a",120],["PC-B","bb:bb:bb:00:00:0b",290],["PC-C","cc:cc:cc:00:00:0c",470],["PC-D","dd:dd:dd:00:00:0d",640]];
+PC.forEach((p,i)=>{src.add(new Option(p[0],i));dst.add(new Option(p[0],i))});dst.add(new Option("모두(브로드캐스트)",9));dst.value=2;
+let T={},hubMode=false;const svg=document.getElementById('st');
+function draw(lit=[],from=-1,col="#6b4fbb"){let s=`<rect x="250" y="20" width="260" height="60" rx="10" fill="${hubMode?'#ddd':'#efe9ff'}" stroke="#6b4fbb" stroke-width="2"/><text x="380" y="56" text-anchor="middle" font-size="18" font-weight="700">${hubMode?'허브':'스위치'}</text>`;
+PC.forEach((p,i)=>{const on=lit.includes(i)||i==from;s+=`<line x1="${300+i*53}" y1="80" x2="${p[2]}" y2="190" stroke="${on?(i==from?'#e69500':col):'#ccc'}" stroke-width="${on?5:3}"/><text x="${300+i*53}" y="96" font-size="11" text-anchor="middle">포트${i+1}</text>
+<rect x="${p[2]-55}" y="190" width="110" height="56" rx="8" fill="${i==from?'#fff2d6':lit.includes(i)?'#e7f7ec':'#fff'}" stroke="#9b86d9" stroke-width="2"/><text x="${p[2]}" y="212" text-anchor="middle" font-weight="700" font-size="14">${p[0]}</text><text x="${p[2]}" y="232" text-anchor="middle" font-size="10" fill="#666">${p[1]}</text>`});svg.innerHTML=s}
+function tbl(){tb.innerHTML="<tr><th>MAC 주소</th><th>포트</th></tr>"+(Object.keys(T).length?Object.entries(T).map(([m,p])=>`<tr><td class="mono">${m}</td><td>포트${p+1}</td></tr>`).join(''):'<tr><td colspan=2 class="mut">(비어 있음)</td></tr>')}
+go.onclick=()=>{const s=+src.value,d=+dst.value;if(s==d){log.textContent+="같은 PC끼리는 보낼 필요가 없어요.\n";return}
+const dm=d==9?"ff:ff:ff:ff:ff:ff":PC[d][1];let out,msg;
+if(hubMode){out=[0,1,2,3].filter(i=>i!=s);msg=`허브: 무조건 모든 포트로 복사 → ${out.map(i=>PC[i][0]).join(', ')}`}
+else{const learn=!(PC[s][1] in T);T[PC[s][1]]=s;msg=(learn?`학습: ${PC[s][1]} 는 포트${s+1}\n`:"")+"";
+if(d==9){out=[0,1,2,3].filter(i=>i!=s);msg+="목적지가 브로드캐스트 → 모든 포트로 플러딩"}
+else if(dm in T){out=[T[dm]];msg+=`테이블에 ${dm} 있음 → 포트${T[dm]+1}로만 포워딩`}
+else{out=[0,1,2,3].filter(i=>i!=s);msg+=`테이블에 ${dm} 없음 → 들어온 포트 빼고 모두 플러딩`}}
+log.textContent+=`${PC[s][0]} → ${d==9?'모두':PC[d][0]}\n${msg}\n\n`;log.scrollTop=1e9;draw(out,s,out.length>1?"#e6457a":"#2e8b57");tbl()};
+hub.onclick=()=>{hubMode=!hubMode;hub.textContent=hubMode?"스위치로 바꾸기":"허브로 바꾸기";T={};tbl();draw();log.textContent=(hubMode?"허브 모드":"스위치 모드")+"로 바꿨습니다.\n"};
+rs.onclick=()=>{T={};tbl();draw();log.textContent=""};draw();tbl();
+</script></body></html>

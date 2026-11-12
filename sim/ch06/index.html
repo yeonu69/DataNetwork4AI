@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>패리티와 CRC 오류 검출 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">6장 시뮬레이터</div><h1>패리티와 CRC 오류 검출 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>보낼 데이터 비트와 생성 다항식을 입력합니다(기본: 데이터 1101, 생성 다항식 1011).</li><li>[CRC 계산]을 누르면 모듈로 2 나눗셈 과정과 나머지가 나옵니다.</li><li>'받은 비트' 줄에서 비트를 눌러 뒤집으면 전송 중 오류가 난 것처럼 만들 수 있습니다.</li><li>패리티와 CRC가 각각 오류를 알아채는지 비교해 봅니다(1비트, 2비트 오류).</li></ol></div>
+<div class="card"><div class="row"><label>데이터 <input type="text" id="dt" value="1101" size="12" class="mono"></label><label>생성 다항식 <input type="text" id="gp" value="1011" size="6" class="mono"></label><button id="calc">CRC 계산</button></div>
+<div class="log" id="div"></div>
+<p><b>보낸 비트</b> <span id="sent" class="mono"></span></p>
+<p><b>받은 비트</b> <span class="mut">(눌러서 뒤집기)</span><br><span id="rx"></span></p>
+<table><tr><th>검사 방법</th><th>받는 쪽 계산</th><th>판정</th></tr><tr><td>짝수 패리티</td><td id="pc"></td><td id="pr"></td></tr><tr><td>CRC</td><td id="cc"></td><td id="cr"></td></tr></table>
+<p class="mut" id="fl"></p></div>
+
+<div class="key"><b>핵심 3줄</b><br>• 짝수 패리티는 1의 개수를 짝수로 맞추는 1비트로, 홀수 개 비트 오류만 알아챕니다.<br>• CRC는 데이터를 생성 다항식으로 XOR 나눗셈한 나머지를 붙여 보내고, 받는 쪽은 나머지가 0인지로 오류를 판단합니다.<br>• CRC는 패리티가 놓치는 2비트 오류와 연속 오류도 잡아내서 이더넷 FCS(CRC-32)에 쓰입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const xor=(a,b)=>a.split('').map((c,i)=>c==b[i]?'0':'1').join('');
+function mod2(bits,gpoly){let r=bits.split(''),steps=[];const k=gpoly.length;for(let i=0;i+k<=r.length;i++){if(r[i]=='1'){const seg=r.slice(i,i+k).join(''),x=xor(seg,gpoly);steps.push(" ".repeat(i)+seg+"\n"+" ".repeat(i)+gpoly+"  XOR → "+x);for(let j=0;j<k;j++)r[i+j]=x[j]}}return{rem:r.slice(r.length-k+1).join(''),steps}}
+let sent="",rx=[],data="",par="";
+function calc(){data=dt.value.replace(/[^01]/g,'')||"1";const gpv=gp.value.replace(/[^01]/g,'')||"11";const pad=data+"0".repeat(gpv.length-1);const{rem,steps}=mod2(pad,gpv);
+div.textContent=`${data} 뒤에 0을 ${gpv.length-1}개 붙임 → ${pad}\n\n`+steps.join("\n")+`\n\n나머지(CRC) = ${rem}`;
+const ones=[...data].filter(c=>c=='1').length;par=ones%2?"1":"0";sent=data+rem;document.getElementById('sent').innerHTML=`<span style="background:#fbe3a8">${data}</span><span style="background:#c9e8ff">${rem}</span>  (+ 패리티용 ${par})`;rx=[...sent];check()}
+function check(){const gpv=gp.value.replace(/[^01]/g,'')||"11";const r=rx.join('');
+document.getElementById('rx').innerHTML=rx.map((c,i)=>`<button class="${c==sent[i]?'sec':''} mono" style="padding:4px 9px;margin:1px;${c!=sent[i]?'background:#d9534f;border-color:#d9534f':''}" onclick="flip(${i})">${c}</button>`).join('');
+const rd=r.slice(0,data.length),ones=[...rd].filter(c=>c=='1').length+ +par;pc.textContent=`데이터 부분 1의 개수 + 패리티 = ${ones}`;pr.innerHTML=ones%2?'<span class="bad">오류 발견</span>':'<span class="ok">정상으로 판단</span>';
+const rem=mod2(r,gpv).rem;cc.textContent=`받은 비트 ÷ ${gpv} 나머지 = ${rem}`;cr.innerHTML=/1/.test(rem)?'<span class="bad">오류 발견</span>':'<span class="ok">정상으로 판단</span>';
+const nf=rx.filter((c,i)=>c!=sent[i]).length;fl.textContent=`뒤집은 비트 수: ${nf}개`+(nf&&!/1/.test(rem)?" (CRC도 놓치는 드문 경우입니다)":"")+(nf==2&&!(ones%2)?" · 패리티는 2비트 오류를 놓쳤습니다":"")}
+function flip(i){rx[i]=rx[i]=='1'?'0':'1';check()}
+calc.onclick=calc;document.getElementById('calc').onclick=calc;calc();
+</script></body></html>

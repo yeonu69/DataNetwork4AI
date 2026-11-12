@@ -1,0 +1,26 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>링 올리듀스 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">15장 시뮬레이터</div><h1>링 올리듀스 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>GPU 개수를 고릅니다(3~6대). 각 GPU는 자기가 계산한 기울기(gradient)를 조각으로 나눠 갖고 있습니다.</li><li>[한 단계]를 누르면 모든 GPU가 동시에 오른쪽 이웃에게 조각 하나씩을 보내고 더합니다(Reduce-Scatter).</li><li>N-1단계 뒤에는 GPU마다 완성된 합계 조각이 하나씩 생기고, 다시 N-1단계 동안 그 조각을 돌려 나눕니다(All-Gather).</li><li>아래 표에서 GPU 한 대가 보낸 데이터 양을 '한 곳에 모아 더하기' 방식과 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><label>GPU 수 <input type="range" id="n" min="3" max="6" value="4"> <b id="nv"></b></label><button id="stp">한 단계</button><button class="sec" id="all">끝까지</button><button class="sec" id="rs">처음으로</button></div>
+<svg class="stage" id="st" viewBox="0 0 760 330"></svg>
+<p id="msg"></p>
+<div style="overflow-x:auto"><table id="cmp"></table></div></div>
+
+<div class="key"><b>핵심 3줄</b><br>• 올리듀스는 모든 GPU의 기울기를 더해 모두가 같은 합계를 갖게 하는 집합 통신입니다.<br>• 링 방식은 GPU를 원으로 잇고 이웃끼리만 조각을 주고받아, 2(N-1)단계 만에 끝납니다.<br>• GPU 한 대가 보내는 양은 GPU 수와 거의 상관없이 모델 크기의 약 2배라서, 수천 대로 늘려도 링크가 고르게 쓰입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const COL=["#6b4fbb","#e6457a","#2e8b57","#e69500","#1f77b4","#8c564b"];let N,V,stepNo,sent;const st=document.getElementById('st');
+function reset(){N=+n.value;nv.textContent=N+"대";V=[];for(let g=0;g<N;g++){V.push([]);for(let c=0;c<N;c++)V[g].push({v:g+1+c,src:[g]})}stepNo=0;sent=0;msg.textContent="처음: GPU마다 자기 값만 가지고 있습니다(조각 "+N+"개).";draw()}
+function step(){const tot=2*(N-1);if(stepNo>=tot){msg.textContent="완료! 모든 GPU가 모든 조각의 합계를 가졌습니다.";return false}
+const rsPhase=stepNo<N-1;const k=rsPhase?stepNo:stepNo-(N-1);const snd=[];
+for(let g=0;g<N;g++){const c=rsPhase?((g-k)%N+N)%N:((g+1-k)%N+N)%N;snd.push([g,c,{...V[g][c],src:[...V[g][c].src]}])}
+for(const[g,c,d]of snd){const to=(g+1)%N;if(rsPhase){V[to][c].v+=d.v;V[to][c].src=[...new Set([...V[to][c].src,...d.src])]}else{V[to][c]={v:d.v,src:d.src}}}
+sent+=1;stepNo++;msg.innerHTML=`<b>${rsPhase?"Reduce-Scatter":"All-Gather"} ${k+1}단계</b>: 모든 GPU가 오른쪽 이웃에게 조각 1개씩 동시에 전송 `+(rsPhase?"(받은 값을 더함)":"(완성된 합계를 복사)")+` · 진행 ${stepNo}/${tot}`;draw(snd);return true}
+function draw(snd=[]){const cx=380,cy=165,R=120;const pos=g=>[cx+R*Math.cos(2*Math.PI*g/N-Math.PI/2),cy+R*Math.sin(2*Math.PI*g/N-Math.PI/2)];let s=`<defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#9b86d9"/></marker></defs>`;
+for(let g=0;g<N;g++){const[x1,y1]=pos(g),[x2,y2]=pos((g+1)%N);s+=`<path d="M${x1},${y1} Q${cx+(x1+x2-2*cx)*0.9},${cy+(y1+y2-2*cy)*0.9} ${x2},${y2}" fill="none" stroke="${snd.length?'#9b86d9':'#ddd'}" stroke-width="3" marker-end="url(#m)"/>`}
+for(let g=0;g<N;g++){const[x,y]=pos(g),w=Math.min(34,150/N),bx=x-w*N/2;s+=`<rect x="${bx-8}" y="${y-36}" width="${w*N+16}" height="68" rx="8" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="${x}" y="${y-20}" text-anchor="middle" font-weight="700" font-size="13">GPU${g}</text>`;
+for(let c=0;c<N;c++){const d=V[g][c],full=d.src.length==N,isS=snd.some(t=>t[0]==g&&t[1]==c);s+=`<rect x="${bx+c*w}" y="${y-12}" width="${w-3}" height="30" rx="3" fill="${full?'#2e8b57':COL[c]}" fill-opacity="${full?1:0.25+0.75*d.src.length/N}" stroke="${isS?'#e69500':'none'}" stroke-width="3"/><text x="${bx+c*w+(w-3)/2}" y="${y+8}" text-anchor="middle" font-size="12" fill="${full||d.src.length>N/2?'#fff':'#333'}" font-weight="700">${d.v}</text>`}}
+s+=`<text x="10" y="320" font-size="11" fill="#666">칸 = 조각, 숫자 = 값, 진할수록 더 많은 GPU 값이 합쳐짐, 초록 = 완성된 합계, 주황 테두리 = 이번에 보내는 조각</text>`;st.innerHTML=s;
+const M=1;cmp.innerHTML=`<tr><th>방식</th><th>GPU 한 대가 보내는 양</th><th>가장 바쁜 곳</th></tr><tr><td>한 곳(서버)에 모아 더하기</td><td>모델 크기 × 1</td><td>서버가 ${N}대 분량(모델 × ${N})을 받고 다시 ${N}번 보냄</td></tr><tr><td><b>링 올리듀스</b></td><td>모델 × 2(N-1)/N = <b>${(2*(N-1)/N).toFixed(2)}</b></td><td>모든 링크가 똑같이 바쁨 (몰림 없음)</td></tr>`}
+stp.onclick=step;all.onclick=()=>{while(step()){}};rs.onclick=reset;n.oninput=reset;reset();
+</script></body></html>

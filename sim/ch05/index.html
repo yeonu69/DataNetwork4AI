@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CSMA 충돌과 백오프 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">5장 시뮬레이터</div><h1>CSMA 충돌과 백오프 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>단말 수를 고릅니다(2~8대).</li><li>[1슬롯 진행]이나 [자동 진행]을 눌러 시간을 흘려 보냅니다.</li><li>두 대 이상이 같은 슬롯에 보내면 충돌(빨강)이 나고, 충돌한 단말은 대기 범위를 2배로 늘려 무작위로 기다립니다.</li><li>단말 수를 늘렸을 때 충돌 비율과 처리율이 어떻게 변하는지 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><label>단말 수 <input type="range" id="n" min="2" max="8" value="4"> <b id="nv"></b></label></div>
+<div class="row"><button id="st1">1슬롯 진행</button><button class="sec" id="au">자동 진행</button><button class="sec" id="rs">처음으로</button></div>
+<canvas id="cv" width="760" height="300"></canvas>
+<div class="row"><span class="pill">성공</span><b id="ok">0</b>&nbsp;<span class="pill">충돌</span><b id="co">0</b>&nbsp;<span class="pill">빈 슬롯</span><b id="em">0</b>&nbsp;<span class="pill">처리율</span><b id="th" class="big">0%</b></div>
+<p class="mut">초록: 전송 성공 · 빨강: 충돌 · 회색 숫자: 남은 대기 슬롯 · 오른쪽 [ ] 안: 현재 대기 범위(경쟁 윈도)</p></div>
+
+<div class="key"><b>핵심 3줄</b><br>• 공유 매체에서는 한 번에 한 대만 말할 수 있어서, 동시에 보내면 충돌이 납니다.<br>• 충돌한 단말은 무작위 시간만큼 기다리고(백오프), 또 충돌하면 대기 범위를 2배로 늘립니다(이진 지수 백오프).<br>• 단말이 많을수록 충돌이 늘어 처리율이 떨어집니다. 그래서 오늘날 유선 LAN은 스위치로 매체를 나눠 충돌 자체를 없앴습니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const cv=document.getElementById('cv'),g=cv.getContext('2d');let S,t,hist,cnt,timer=null;const COLS=36;
+function reset(){const k=+n.value;nv.textContent=k+"대";S=Array.from({length:k},()=>({cw:2,b:Math.floor(Math.random()*2)}));t=0;hist=[];cnt={ok:0,co:0,em:0};upd();draw()}
+function step(){const tx=S.map((s,i)=>s.b==0?i:-1).filter(i=>i>=0);const col=[];
+if(tx.length==0)cnt.em++;else if(tx.length==1){cnt.ok++;const s=S[tx[0]];s.cw=2;s.b=1+Math.floor(Math.random()*s.cw)}else{cnt.co++;tx.forEach(i=>{const s=S[i];s.cw=Math.min(64,s.cw*2);s.b=1+Math.floor(Math.random()*s.cw)})}
+S.forEach((s,i)=>{if(!tx.includes(i))s.b--});hist.push({tx,snap:S.map(s=>s.b)});t++;upd();draw()}
+function upd(){ok.textContent=cnt.ok;co.textContent=cnt.co;em.textContent=cnt.em;th.textContent=t?Math.round(cnt.ok/t*100)+"%":"0%"}
+function draw(){const k=S.length,W=760,H=300,cw=(W-130)/COLS,rh=(H-30)/k;g.clearRect(0,0,W,H);g.font="12px sans-serif";
+const h0=Math.max(0,hist.length-COLS);
+for(let i=0;i<k;i++){g.fillStyle="#333";g.fillText("단말 "+String.fromCharCode(65+i),6,24+i*rh+rh/2);g.fillText("["+S[i].cw+"]",W-50,24+i*rh+rh/2)}
+hist.slice(h0).forEach((h,j)=>{const x=60+j*cw;for(let i=0;i<k;i++){const y=20+i*rh;g.strokeStyle="#eee";g.strokeRect(x,y,cw,rh);
+if(h.tx.includes(i)){g.fillStyle=h.tx.length==1?"#2e8b57":"#d9534f";g.fillRect(x+1,y+3,cw-2,rh-6)}else if(h.snap[i]>0){g.fillStyle="#aaa";g.fillText(h.snap[i],x+cw/2-4,y+rh/2+4)}}});
+g.fillStyle="#666";g.fillText("시간(슬롯) →  지금 "+t,60,14)}
+st1.onclick=step;au.onclick=()=>{if(timer){clearInterval(timer);timer=null;au.textContent="자동 진행"}else{timer=setInterval(step,250);au.textContent="멈추기"}};
+rs.onclick=reset;n.oninput=reset;reset();
+</script></body></html>

@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TCP 혼잡 제어 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">13장 시뮬레이터</div><h1>TCP 혼잡 제어 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>[자동 진행]을 누르면 왕복 시간(RTT)마다 혼잡 윈도(cwnd)가 그래프로 그려집니다.</li><li>처음에는 cwnd가 2배씩 늘어나는 느린 시작을, 임계값(ssthresh)을 넘은 뒤에는 1씩 느는 혼잡 회피를 확인합니다.</li><li>[중복 ACK 3개]를 누르면 cwnd가 절반으로, [타임아웃]을 누르면 1로 떨어지는 것을 비교합니다.</li><li>몇 번 반복하면 톱니 모양이 생기는데, 이것이 TCP가 망 상태를 더듬어 가는 방식입니다.</li></ol></div>
+<div class="card"><div class="row"><button id="st1">1 RTT 진행</button><button class="sec" id="au">자동 진행</button><button class="sec" id="dup" style="border-color:#e69500;color:#e69500">중복 ACK 3개</button><button class="sec" id="to" style="border-color:#d9534f;color:#d9534f">타임아웃</button><button class="sec" id="rs">처음으로</button></div>
+<canvas id="cv" width="760" height="300"></canvas>
+<div class="row"><span class="pill">cwnd</span><b id="cw" class="big"></b>&nbsp;<span class="pill">ssthresh</span><b id="ss"></b>&nbsp;<span class="pill">단계</span><b id="ph"></b></div>
+<div class="log" id="log"></div></div>
+
+<div class="key"><b>핵심 3줄</b><br>• TCP는 처음에는 cwnd를 RTT마다 2배씩 늘리고(느린 시작), ssthresh를 넘으면 1씩만 늘립니다(혼잡 회피).<br>• 중복 ACK 3개는 가벼운 손실로 보고 절반으로 줄이고(빠른 회복), 타임아웃은 심한 혼잡으로 보고 1부터 다시 시작합니다.<br>• 그래서 cwnd 그래프는 톱니 모양이 되고, 평균 전송 속도는 대략 cwnd ÷ RTT입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>let cwnd,ssth,hist,timer=null,ev;const g=cv.getContext('2d');
+function reset(){cwnd=1;ssth=32;hist=[[1,null]];ev=[];log.textContent="연결 시작: cwnd=1 MSS, ssthresh=32\n";draw()}
+function phase(){return cwnd<ssth?"느린 시작":"혼잡 회피"}
+function step(){if(cwnd>=ssth&&hist.length>4&&Math.random()<0.0&&0){}cwnd=cwnd<ssth?Math.min(cwnd*2,ssth):cwnd+1;hist.push([cwnd,null]);if(cwnd>=48){lossDup(true)};draw()}
+function lossDup(auto){ssth=Math.max(2,Math.floor(cwnd/2));cwnd=ssth;hist.push([cwnd,"dup"]);log.textContent+=`${auto?"망 한계 도달 → ":""}중복 ACK 3개: ssthresh=${ssth}, cwnd=${cwnd} (절반)\n`;log.scrollTop=1e9;draw()}
+function lossTo(){ssth=Math.max(2,Math.floor(cwnd/2));cwnd=1;hist.push([cwnd,"to"]);log.textContent+=`타임아웃: ssthresh=${ssth}, cwnd=1 (처음부터)\n`;log.scrollTop=1e9;draw()}
+function draw(){const W=760,H=300,n=Math.max(40,hist.length),X=i=>40+i/(n-1)*(W-60),Y=v=>H-30-v/56*(H-50);g.clearRect(0,0,W,H);
+g.strokeStyle="#eee";g.fillStyle="#666";g.font="11px sans-serif";for(let v=0;v<=56;v+=8){g.beginPath();g.moveTo(40,Y(v));g.lineTo(W-20,Y(v));g.stroke();g.fillText(v,12,Y(v)+4)}
+g.fillText("RTT →",W-60,H-10);g.fillText("cwnd(MSS)",4,12);
+g.strokeStyle="#e69500";g.setLineDash([6,4]);g.beginPath();g.moveTo(40,Y(ssth));g.lineTo(W-20,Y(ssth));g.stroke();g.setLineDash([]);g.fillStyle="#e69500";g.fillText("ssthresh "+ssth,W-110,Y(ssth)-4);
+g.strokeStyle="#6b4fbb";g.lineWidth=3;g.beginPath();hist.forEach(([v],i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));g.stroke();g.lineWidth=1;
+hist.forEach(([v,e],i)=>{if(e){g.fillStyle=e=="dup"?"#e69500":"#d9534f";g.beginPath();g.arc(X(i),Y(v),6,0,7);g.fill()}});
+cw.textContent=cwnd+" MSS";ss.textContent=ssth;ph.textContent=phase()}
+st1.onclick=step;au.onclick=()=>{if(timer){clearInterval(timer);timer=null;au.textContent="자동 진행"}else{timer=setInterval(()=>{if(hist.length>=60){clearInterval(timer);timer=null;au.textContent="자동 진행";return}step()},300);au.textContent="멈추기"}};
+dup.onclick=()=>lossDup(false);to.onclick=lossTo;rs.onclick=reset;reset();
+</script></body></html>

@@ -1,0 +1,31 @@
+:root{--p:#6b4fbb;--p2:#9b86d9;--bg:#f6f3fd;--card:#fff;--ink:#222;--mut:#666;--ok:#2e8b57;--bad:#d9534f;--warn:#e69500;--line:#d9d0f0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;line-height:1.55;font-size:15px}
+header{background:var(--p);color:#fff;padding:14px 16px}
+header .ch{font-size:12px;opacity:.85}
+header h1{margin:2px 0 0;font-size:19px}
+main{max-width:860px;margin:0 auto;padding:14px 16px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 14px}
+.card h2{font-size:16px;margin:0 0 8px;color:var(--p)}
+.how{font-size:14px;color:#333}
+.how ol{margin:6px 0 0;padding-left:20px}
+button,select,input[type=number],input[type=text]{font:inherit;font-size:14px;border-radius:8px;border:1px solid var(--p2);padding:7px 11px;background:#fff;color:var(--ink)}
+button{background:var(--p);color:#fff;border-color:var(--p);cursor:pointer}
+button.sec{background:#fff;color:var(--p)}
+button:disabled{opacity:.45;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+label{font-size:14px}
+input[type=range]{accent-color:var(--p);width:160px}
+canvas,svg.stage{width:100%;height:auto;display:block;background:#fbfaff;border:1px solid var(--line);border-radius:10px}
+.log{font-family:"DejaVu Sans Mono",Consolas,monospace;font-size:12.5px;background:#1f1b2e;color:#e8e3ff;border-radius:10px;padding:10px;min-height:60px;max-height:220px;overflow:auto;white-space:pre-wrap}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;background:#ece6fb;color:var(--p);margin-right:4px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:5px 7px;text-align:left}
+th{background:#ece6fb}
+.big{font-size:22px;font-weight:700;color:var(--p)}
+.mut{color:var(--mut);font-size:13px}
+.ok{color:var(--ok);font-weight:700}.bad{color:var(--bad);font-weight:700}
+.key{background:#f1ecff;border-left:4px solid var(--p);padding:8px 10px;border-radius:6px;font-size:14px}
+footer{text-align:center;font-size:12px;color:var(--mut);padding:10px}
+.hl{background:#fff2b3!important}
+.mono{font-family:"DejaVu Sans Mono",Consolas,monospace}

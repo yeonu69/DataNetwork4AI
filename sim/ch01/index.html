@@ -1,0 +1,31 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>패킷 여행 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">1장 시뮬레이터</div><h1>패킷 여행 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>목적지를 고릅니다(같은 집 프린터, 학교 웹 서버, 해외 웹 서버).</li><li>[보내기]를 누르면 패킷이 장비를 하나씩 지나갑니다.</li><li>아래 기록 창에서 각 장비가 패킷을 보고 무엇을 결정했는지 읽어 봅니다.</li><li>목적지를 바꿔 홉 수와 지연 시간이 어떻게 달라지는지 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><label>목적지 <select id="dst"><option value="0">같은 집 프린터 (192.168.0.50)</option><option value="1" selected>학교 웹 서버 (www.school.ac.kr)</option><option value="2">해외 웹 서버 (www.example.com)</option></select></label>
+<button id="go">보내기</button><button class="sec" id="rs">처음으로</button></div>
+<svg class="stage" id="st" viewBox="0 0 800 230"></svg>
+<div class="row"><span class="pill">홉 수</span><span class="big" id="hops">0</span>&nbsp;&nbsp;<span class="pill">누적 지연</span><span class="big" id="ms">0 ms</span></div>
+<div class="log" id="log">[보내기]를 눌러 보세요.</div></div>
+
+<div class="key"><b>핵심 3줄</b><br>• 같은 LAN 안이면 공유기 밖으로 나가지 않고 스위치만 거쳐 바로 도착합니다.<br>• 인터넷 목적지는 공유기(기본 게이트웨이)부터 라우터를 여러 번 거치며, 거칠수록 지연이 늘어납니다.<br>• 각 장비는 "다음에 누구에게 넘길지"만 정합니다. 이 규칙의 묶음이 네트워크입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const N={pc:[50,120,"내 PC","192.168.0.23"],pr:[200,40,"프린터","192.168.0.50"],sw:[200,120,"스위치",""],gw:[330,120,"공유기","192.168.0.1"],isp:[460,120,"ISP 라우터","10.0.12.2"],ix:[590,60,"인터넷 교환점",""],sc:[720,190,"학교 서버","학교망"],ex:[720,60,"해외 서버","93.184.215.14"],sea:[650,140,"해저 케이블",""]};
+const P=[["pc","sw","pr"],["pc","sw","gw","isp","sc"],["pc","sw","gw","isp","ix","sea","ex"]];
+const MSG={sw:"스위치: 목적지 MAC을 보고 해당 포트로만 내보냄",pr:"프린터: 내 주소가 맞다! 받아서 처리",gw:"공유기: 다른 네트워크 주소 → 출발지 IP를 공인 IP로 바꾸고(NAT) ISP로 넘김",isp:"ISP 라우터: 라우팅 표에서 가장 잘 맞는 길을 찾아 다음 라우터로",ix:"교환점: 다른 통신사 망으로 건네줌",sea:"해저 케이블: 빛 신호로 바다를 건넘 (지연이 큼)",sc:"학교 서버: 80/443번 포트로 요청 수신 → 응답 시작",ex:"해외 서버: 요청 수신 → 응답 시작"};
+const D={sw:0.2,pr:0.3,gw:0.8,isp:3,ix:4,sea:65,sc:2,ex:3};
+const st=document.getElementById('st'),log=document.getElementById('log');
+const ED=[["pc","sw"],["sw","pr"],["sw","gw"],["gw","isp"],["isp","sc"],["isp","ix"],["ix","sea"],["sea","ex"]];
+function draw(){let s="";for(const[a,b]of ED)s+=`<line id="e_${a}_${b}" x1="${N[a][0]}" y1="${N[a][1]}" x2="${N[b][0]}" y2="${N[b][1]}" stroke="#cfc6ea" stroke-width="4"/>`;
+for(const k in N){const[x,y,t,ip]=N[k];s+=`<g id="n_${k}"><rect x="${x-46}" y="${y-20}" width="92" height="40" rx="8" fill="#fff" stroke="#9b86d9" stroke-width="2"/><text x="${x}" y="${y-2}" text-anchor="middle" font-size="13" font-weight="700">${t}</text><text x="${x}" y="${y+13}" text-anchor="middle" font-size="10" fill="#666">${ip}</text></g>`}
+s+=`<circle id="pk" r="9" fill="#e6457a" cx="${N.pc[0]}" cy="${N.pc[1]-30}" opacity="0"/>`;st.innerHTML=s}
+draw();let busy=false;
+function hl(k,c){st.querySelector(`#n_${k} rect`).setAttribute('fill',c)}
+async function mv(a,b){const pk=document.getElementById('pk');const t0=performance.now(),T=500;return new Promise(r=>{function f(t){const u=Math.min(1,(t-t0)/T);pk.setAttribute('cx',N[a][0]+(N[b][0]-N[a][0])*u);pk.setAttribute('cy',N[a][1]+(N[b][1]-N[a][1])*u-24);u<1?requestAnimationFrame(f):r()}requestAnimationFrame(f)})}
+document.getElementById('go').onclick=async()=>{if(busy)return;busy=true;draw();const p=P[+dst.value];const pk=document.getElementById('pk');pk.setAttribute('opacity',1);
+log.textContent="내 PC: 목적지 주소를 확인하고 패킷을 만들어 보냄\n";let ms=0,h=0;hl('pc','#efe9ff');
+for(let i=1;i<p.length;i++){await mv(p[i-1],p[i]);const k=p[i];hl(k,'#efe9ff');ms+=D[k];if(!["sw"].includes(k)&&i<p.length-1)h++;
+document.getElementById('hops').textContent=h;document.getElementById('ms').textContent=ms.toFixed(1)+" ms";log.textContent+=MSG[k]+`  (+${D[k]} ms)\n`;}
+hl(p[p.length-1],'#d6f5e3');log.textContent+=`\n도착! 라우터 홉 ${h}개, 편도 약 ${ms.toFixed(1)} ms`;busy=false};
+document.getElementById('rs').onclick=()=>{if(busy)return;draw();log.textContent="[보내기]를 눌러 보세요.";hops.textContent=0;ms.textContent="0 ms"};
+</script></body></html>

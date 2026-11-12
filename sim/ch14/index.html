@@ -1,0 +1,37 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DNS 이름 풀이 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">14장 시뮬레이터</div><h1>DNS 이름 풀이 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>찾을 도메인 이름을 고르고 [이름 풀기]를 누릅니다.</li><li>내 PC → 리졸버 → 루트 → TLD(.com, .kr) → 권한 서버 순서로 질문이 오가는 과정을 기록 창에서 봅니다.</li><li>같은 이름을 한 번 더 풀어 보세요. 리졸버 캐시에 남아 있어 훨씬 빨리 답이 옵니다.</li><li>www.test.com처럼 CNAME(별명)이 있는 이름은 한 번 더 찾아가는 것도 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>이름 <select id="q"><option>www.example.com</option><option>www.test.com</option><option>www.mokpo.ac.kr</option></select></label><button id="go">이름 풀기</button><button class="sec" id="cl">캐시 비우기</button></div>
+<svg class="stage" id="st" viewBox="0 0 760 260"></svg>
+<div class="row"><span class="pill">걸린 시간</span><b id="tm" class="big">-</b>&nbsp;<span class="pill">답</span><b id="ans" class="mono">-</b></div>
+<div class="log" id="log"></div>
+<b>리졸버 캐시</b><div style="overflow-x:auto"><table id="cache"></table></div></div>
+
+<div class="key"><b>핵심 3줄</b><br>• DNS는 이름을 IP 주소로 바꿔 주는 분산 전화번호부로, 루트 → TLD → 권한 서버 순서로 찾아갑니다.<br>• PC는 리졸버(예: 168.126.63.1)에 한 번만 묻고, 리졸버가 대신 여러 서버를 돌아다닙니다(재귀 질의).<br>• 답은 TTL 동안 캐시에 남으므로, 두 번째부터는 몇 ms 만에 답이 옵니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const N={pc:[80,130,"내 PC"],rs:[280,130,"리졸버","168.126.63.1"],root:[560,35,"루트 서버","."],tld:[670,130,"TLD 서버",""],auth:[560,225,"권한 서버",""]};
+const DB={"www.example.com":{tld:".com",auth:"example.com",a:"93.184.215.14"},"www.test.com":{tld:".com",auth:"test.com",cname:"web.test.com",a:"203.0.113.10"},"www.mokpo.ac.kr":{tld:".kr",auth:"mokpo.ac.kr",a:"210.117.200.12"}};
+let cache={},busy=false;const st=document.getElementById('st');
+function draw(){let s="";for(const k in N){const[x,y,t,sub]=N[k];s+=`<g id="n_${k}"><rect x="${x-62}" y="${y-22}" width="124" height="44" rx="8" fill="#fff" stroke="#9b86d9" stroke-width="2"/><text x="${x}" y="${y-2}" text-anchor="middle" font-weight="700" font-size="13">${t}</text><text id="s_${k}" x="${x}" y="${y+14}" text-anchor="middle" font-size="10" fill="#666">${sub||""}</text></g>`}
+s+=`<g id="ar"></g>`;st.innerHTML=s}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function hop(a,b,label,col="#6b4fbb"){const[x1,y1]=N[a],[x2,y2]=N[b];const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),ox=-dy/L*7,oy=dx/L*7;const ar=st.querySelector('#ar');
+ar.querySelectorAll('text,rect').forEach(t=>t.remove());ar.querySelectorAll('line').forEach(l=>l.setAttribute('opacity','.3'));
+const sx=x1+dx/L*64+ox,sy=y1+dy/L*24+oy,ex=x2-dx/L*64+ox,ey=y2-dy/L*24+oy;
+ar.innerHTML+=`<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="${col}" stroke-width="3" marker-end="url(#m)"/><rect x="${(sx+ex)/2-4}" y="${(sy+ey)/2-28}" width="${label.length*7.5+10}" height="20" rx="4" fill="#fff" stroke="${col}"/><text x="${(sx+ex)/2+1}" y="${(sy+ey)/2-13}" font-size="12" font-weight="700" fill="${col}">${label}</text>`;await sleep(550)}
+go.onclick=async()=>{if(busy)return;busy=true;draw();st.insertAdjacentHTML('afterbegin','<defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#6b4fbb"/></marker></defs>');
+const name=q.value,d=DB[name];let t=0;log.textContent="";const L=s=>{log.textContent+=s+"\n";log.scrollTop=1e9};
+st.querySelector('#s_tld').textContent=d.tld;st.querySelector('#s_auth').textContent=d.auth;
+await hop('pc','rs',"① "+name+"?");t+=2;L(`내 PC → 리졸버: ${name} 의 A 레코드 알려 줘`);
+if(cache[name]){await hop('rs','pc',"캐시에서 바로 답","#2e8b57");t+=2;L(`리졸버: 캐시에 있음 (남은 TTL ${cache[name].ttl}초) → 바로 응답`);}
+else{await hop('rs','root',"② 질문");await hop('root','rs',d.tld+" 서버로 가 봐","#e69500");t+=30;L(`루트 서버: 모름. ${d.tld} 담당 TLD 서버를 알려 줌`);
+await hop('rs','tld',"③ 질문");await hop('tld','rs',d.auth+" 권한 서버로","#e69500");t+=25;L(`TLD 서버(${d.tld}): ${d.auth} 의 권한 서버를 알려 줌`);
+await hop('rs','auth',"④ 질문");t+=20;
+if(d.cname){await hop('auth','rs',"CNAME "+d.cname,"#e69500");L(`권한 서버: ${name} 는 ${d.cname} 의 별명(CNAME)`);await hop('rs','auth',"⑤ "+d.cname+"?");t+=20;}
+await hop('auth','rs',"A "+d.a,"#2e8b57");L(`권한 서버: ${d.cname||name} 의 A 레코드 = ${d.a}`);
+await hop('rs','pc',"⑥ 답 "+d.a,"#2e8b57");t+=2;cache[name]={a:d.a,ttl:3600};L(`리졸버: 답을 캐시에 저장(TTL 3600초) 후 PC에 응답`)}
+tm.textContent=t+" ms";ans.textContent=d.a;tab();busy=false};
+function tab(){cache_tb=document.getElementById('cache');cache_tb.innerHTML="<tr><th>이름</th><th>주소</th><th>TTL</th></tr>"+(Object.keys(cache).length?Object.entries(cache).map(([k,v])=>`<tr><td class="mono">${k}</td><td class="mono">${v.a}</td><td>${v.ttl}초</td></tr>`).join(''):'<tr><td colspan=3 class="mut">(비어 있음)</td></tr>')}
+cl.onclick=()=>{cache={};tab()};draw();tab();
+</script></body></html>

@@ -1,0 +1,28 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>traceroute와 TTL 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">10장 시뮬레이터</div><h1>traceroute와 TTL 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>[다음 탐침 보내기]를 누르면 TTL=1부터 하나씩 늘린 패킷이 출발합니다.</li><li>패킷이 라우터를 지날 때마다 TTL이 1씩 줄고, 0이 되는 라우터가 ICMP Time Exceeded로 답합니다.</li><li>아래 결과 표에 그 라우터 주소와 왕복 시간(RTT)이 한 줄씩 쌓이는 것을 봅니다.</li><li>목적지에 도착하면 Echo Reply가 오면서 추적이 끝납니다. [응답 안 하는 라우터] 체크로 * * * 가 나오는 경우도 봅니다.</li></ol></div>
+<div class="card"><div class="row"><button id="go">다음 탐침 보내기</button><button class="sec" id="all">끝까지 자동</button><button class="sec" id="rs">처음으로</button><label><input type="checkbox" id="silent"> 응답 안 하는 라우터(3번째)</label></div>
+<svg class="stage" id="st" viewBox="0 0 760 180"></svg>
+<div class="log" id="out">$ traceroute 8.8.8.8</div></div>
+
+<div class="key"><b>핵심 3줄</b><br>• TTL은 라우터를 지날 때마다 1씩 줄고, 0이 되면 패킷을 버리고 보낸 쪽에 ICMP Time Exceeded를 보냅니다.<br>• traceroute는 TTL을 1, 2, 3…으로 늘려 보내면서 이 오류 메시지를 모아 경로를 알아냅니다.<br>• 보안 설정으로 ICMP에 답하지 않는 라우터는 * * * 로 표시되며, 경로가 끊긴 것은 아닙니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const H=[["내 PC","192.168.0.23",0],["공유기","192.168.0.1",1.2],["ISP","10.0.12.2",4.8],["백본","10.0.23.2",9.6],["교환점","203.0.113.1",14.1],["목적지","8.8.8.8",18.3]];
+let ttl=0,busy=false,done=false;const st=document.getElementById('st'),X=i=>60+i*128;
+function draw(){let s="";for(let i=0;i<H.length-1;i++)s+=`<line x1="${X(i)}" y1="90" x2="${X(i+1)}" y2="90" stroke="#cfc6ea" stroke-width="4"/>`;
+H.forEach((h,i)=>{s+=`<g id="h${i}"><rect x="${X(i)-50}" y="68" width="100" height="44" rx="8" fill="#fff" stroke="#9b86d9" stroke-width="2"/><text x="${X(i)}" y="87" text-anchor="middle" font-size="13" font-weight="700">${h[0]}</text><text x="${X(i)}" y="103" text-anchor="middle" font-size="10" fill="#666">${h[1]}</text></g>`});
+s+=`<g id="pk" opacity="0"><rect x="-24" y="-14" width="48" height="22" rx="5" fill="#e6457a"/><text id="pt" y="2" text-anchor="middle" font-size="11" fill="#fff" font-weight="700"></text></g>`;st.innerHTML=s}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function mv(a,b,y,label,col){const pk=st.querySelector('#pk');pk.setAttribute('opacity',1);pk.querySelector('rect').setAttribute('fill',col);st.querySelector('#pt').textContent=label;
+for(let u=0;u<=1.0001;u+=0.1){pk.setAttribute('transform',`translate(${X(a)+(X(b)-X(a))*u},${y})`);await sleep(30)}}
+async function probe(){if(busy||done)return;busy=true;ttl++;let t=ttl,i=0;
+while(i<H.length-1){await mv(i,i+1,50,"TTL="+t,"#e6457a");i++;if(i==H.length-1)break;t--;if(t==0)break;}
+const last=i==H.length-1;const rtt=(H[i][2]*2*(0.9+Math.random()*0.2)).toFixed(1);
+if(i==3&&silent.checked&&!last){st.querySelector(`#h${i} rect`).setAttribute('fill','#eee');out.textContent+=`\n${ttl}  * * *   (응답 없음)`}
+else{st.querySelector(`#h${i} rect`).setAttribute('fill',last?'#d6f5e3':'#fff2d6');
+await mv(i,0,130,last?"Echo Reply":"Time Exceeded",last?"#2e8b57":"#e69500");
+out.textContent+=`\n${ttl}  ${H[i][1].padEnd(13)} ${rtt} ms   ${last?'← 목적지 도착 (ICMP Echo Reply)':'← '+H[i][0]+'에서 TTL 0 (ICMP Time Exceeded)'}`}
+if(last){done=true;out.textContent+="\n\n추적 완료: "+ttl+"홉"}busy=false}
+go.onclick=probe;all.onclick=async()=>{while(!done){await probe()}};rs.onclick=()=>{if(busy)return;ttl=0;done=false;draw();out.textContent="$ traceroute 8.8.8.8"};draw();
+</script></body></html>

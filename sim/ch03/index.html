@@ -1,0 +1,31 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>아날로그-디지털 변환 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">3장 시뮬레이터</div><h1>아날로그-디지털 변환 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>신호 주파수를 정합니다(기본 1 kHz 소리).</li><li>표본화 주파수 슬라이더를 움직여 1초에 몇 번 값을 재는지 바꿉니다.</li><li>양자화 비트 수를 바꿔 계단 모양이 얼마나 촘촘해지는지 봅니다.</li><li>표본화 주파수를 신호 주파수의 2배보다 낮추면 복원 신호가 엉뚱한 모양이 되는 것(앨리어싱)을 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>신호 주파수 <input type="range" id="f" min="1" max="8" step="0.5" value="1"> <b id="fv"></b></label></div>
+<div class="row"><label>표본화 주파수 <input type="range" id="fs" min="1" max="40" step="1" value="8"> <b id="fsv"></b></label></div>
+<div class="row"><label>양자화 비트 <input type="range" id="b" min="1" max="8" value="3"> <b id="bv"></b></label></div>
+<canvas id="cv" width="760" height="300"></canvas>
+<div class="row"><span class="pill">상태</span><span id="st"></span></div>
+<div class="row"><span class="pill">비트율(모노)</span><span class="big" id="br"></span></div>
+<p class="mut">회색: 원래 아날로그 신호 · 보라 점: 표본 · 분홍 계단: 양자화된 값 · 초록 점선: 표본으로 다시 그린 신호</p></div>
+
+<div class="key"><b>핵심 3줄</b><br>• 표본화는 시간을, 양자화는 크기를 잘게 나누는 일이며 둘 다 촘촘할수록 원래 신호에 가깝습니다.<br>• 표본화 주파수는 신호 최고 주파수의 2배 이상이어야 합니다(나이퀴스트). 그보다 낮으면 앨리어싱이 생깁니다.<br>• 비트율 = 표본화 주파수 × 양자화 비트 수 × 채널 수. 품질을 올리면 데이터 양도 늘어납니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const cv=document.getElementById('cv'),g=cv.getContext('2d');
+function draw(){const f=+F.value,fs=+FS.value,b=+B.value,W=760,H=300,T=2;// 2 ms window, f in kHz
+fv.textContent=f+" kHz";fsv.textContent=fs+" kHz";bv.textContent=b+"비트 ("+(1<<b)+"단계)";
+g.clearRect(0,0,W,H);const X=t=>20+t/T*(W-40),Y=v=>H/2-v*(H/2-20);const lv=(1<<b);
+g.strokeStyle="#eee";for(let i=0;i<lv;i++){const v=-1+2*(i+.5)/lv;g.beginPath();g.moveTo(20,Y(v));g.lineTo(W-20,Y(v));g.stroke()}
+g.strokeStyle="#999";g.lineWidth=2;g.beginPath();for(let x=0;x<=600;x++){const t=x/600*T;const y=Math.sin(2*Math.PI*f*t);x?g.lineTo(X(t),Y(y)):g.moveTo(X(t),Y(y))}g.stroke();
+const q=v=>{let i=Math.min(lv-1,Math.floor((v+1)/2*lv));return -1+2*(i+.5)/lv};const pts=[];
+for(let n=0;n/fs<=T+1e-9;n++){const t=n/fs;pts.push([t,q(Math.sin(2*Math.PI*f*t))])}
+g.strokeStyle="#e6457a";g.lineWidth=2;g.beginPath();pts.forEach(([t,v],i)=>{if(i){g.lineTo(X(t),Y(pts[i-1][1]));}g.lineTo(X(t),Y(v))});g.lineTo(X(T),Y(pts[pts.length-1][1]));g.stroke();
+// reconstruction: sinc interpolation
+g.setLineDash([6,4]);g.strokeStyle="#2e8b57";g.beginPath();for(let x=0;x<=600;x++){const t=x/600*T;let s=0;for(let n=-40;n<=fs*T+40;n++){const tn=n/fs,u=(t-tn)*fs;s+=q(Math.sin(2*Math.PI*f*tn))*(u==0?1:Math.sin(Math.PI*u)/(Math.PI*u))}x?g.lineTo(X(t),Y(s)):g.moveTo(X(t),Y(s))}g.stroke();g.setLineDash([]);
+g.fillStyle="#6b4fbb";pts.forEach(([t,v])=>{g.beginPath();g.arc(X(t),Y(Math.sin(2*Math.PI*f*t)),4,0,7);g.fill()});
+g.fillStyle="#333";g.font="12px sans-serif";g.fillText("시간 0 ~ 2 ms",W-110,H-6);
+const ok=fs>=2*f;st.innerHTML=ok?`<span class="ok">정상</span> 표본화 ${fs} kHz ≥ 2 × ${f} kHz`:`<span class="bad">앨리어싱!</span> 표본화 ${fs} kHz &lt; 2 × ${f} kHz = ${2*f} kHz`;
+br.textContent=(fs*b)+" kbps";}
+const F=document.getElementById('f'),FS=document.getElementById('fs'),B=document.getElementById('b');[F,FS,B].forEach(e=>e.oninput=draw);draw();
+</script></body></html>

@@ -1,0 +1,25 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>최단 경로(다익스트라) 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">11장 시뮬레이터</div><h1>최단 경로(다익스트라) 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>링크 위 숫자(비용)를 눌러 값을 바꿀 수 있습니다(1~9 순환).</li><li>[한 단계]를 누를 때마다 R1에서 가장 가까운 라우터가 하나씩 확정됩니다(초록).</li><li>오른쪽 표에서 각 라우터까지의 거리와 '다음 홉'이 어떻게 갱신되는지 봅니다.</li><li>링크 하나의 비용을 크게 올리면 경로가 다른 쪽으로 바뀌는 것을 확인합니다(장애 상황).</li></ol></div>
+<div class="card"><div class="row"><button id="stp">한 단계</button><button class="sec" id="all">끝까지</button><button class="sec" id="rs">처음으로</button></div>
+<svg class="stage" id="st" viewBox="0 0 760 300"></svg>
+<table id="tb"></table><p class="mut" id="msg"></p></div>
+
+<div class="key"><b>핵심 3줄</b><br>• OSPF 같은 링크 상태 라우팅은 전체 지도를 알고 다익스트라 알고리즘으로 최단 경로를 계산합니다.<br>• 가장 가까운 노드부터 하나씩 확정하고, 그 노드를 거쳐 가는 길이 더 짧으면 거리를 고쳐 씁니다.<br>• 라우팅 테이블에 들어가는 것은 전체 경로가 아니라 '목적지별 다음 홉'뿐입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const P={R1:[70,150],R2:[250,60],R3:[250,240],R4:[460,60],R5:[460,240],R6:[680,150]};
+let E=[["R1","R2",2],["R1","R3",5],["R2","R3",2],["R2","R4",4],["R3","R5",3],["R4","R5",1],["R4","R6",3],["R5","R6",6]];
+let dist,prev,done,first;const st=document.getElementById('st');
+function init(){dist={},prev={},done=new Set();first={};for(const k in P){dist[k]=Infinity}dist.R1=0;msg.textContent="R1에서 출발합니다. [한 단계]를 누르세요.";draw()}
+function nb(u){return E.filter(e=>e[0]==u||e[1]==u).map(e=>[e[0]==u?e[1]:e[0],e[2]])}
+function step(){let u=null;for(const k in P)if(!done.has(k)&&dist[k]<Infinity&&(u==null||dist[k]<dist[u]))u=k;if(!u){msg.textContent="모든 라우터가 확정되었습니다.";return false}
+done.add(u);let ch=[];for(const[v,w]of nb(u)){if(!done.has(v)&&dist[u]+w<dist[v]){dist[v]=dist[u]+w;prev[v]=u;first[v]=u=="R1"?v:first[u];ch.push(`${v}: ${dist[v]}`)}}
+msg.textContent=`${u} 확정(거리 ${dist[u]}). `+(ch.length?`${u}를 거쳐 갱신 → ${ch.join(', ')}`:"갱신할 이웃 없음");draw();return true}
+function draw(){let s="";const onPath=new Set();for(const k in prev)if(done.has(k))onPath.add(k+prev[k]),onPath.add(prev[k]+k);
+E.forEach((e,i)=>{const[a,b,w]=e,[x1,y1]=P[a],[x2,y2]=P[b],tp=onPath.has(a+b);s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${tp?'#2e8b57':'#cfc6ea'}" stroke-width="${tp?6:4}"/><g style="cursor:pointer" onclick="cost(${i})"><circle cx="${(x1+x2)/2}" cy="${(y1+y2)/2}" r="15" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="${(x1+x2)/2}" y="${(y1+y2)/2+5}" text-anchor="middle" font-size="15" font-weight="700" fill="#6b4fbb">${w}</text></g>`});
+for(const k in P){const[x,y]=P[k];s+=`<circle cx="${x}" cy="${y}" r="28" fill="${done.has(k)?'#d6f5e3':dist[k]<Infinity?'#fff2d6':'#fff'}" stroke="#6b4fbb" stroke-width="2"/><text x="${x}" y="${y-2}" text-anchor="middle" font-weight="700">${k}</text><text x="${x}" y="${y+14}" text-anchor="middle" font-size="11" fill="#666">${dist[k]==Infinity?'∞':dist[k]}</text>`}st.innerHTML=s;
+tb.innerHTML="<tr><th>목적지</th><th>거리</th><th>경로</th><th>R1의 다음 홉</th><th>상태</th></tr>"+Object.keys(P).filter(k=>k!="R1").map(k=>{let p=[k],c=k;while(prev[c]){c=prev[c];p.unshift(c)}return `<tr><td>${k}</td><td>${dist[k]==Infinity?'∞':dist[k]}</td><td>${dist[k]<Infinity?p.join('→'):'-'}</td><td>${first[k]||'-'}</td><td>${done.has(k)?'<span class="ok">확정</span>':'후보'}</td></tr>`}).join('')}
+function cost(i){E[i][2]=E[i][2]%9+1;init()}
+stp.onclick=step;all.onclick=()=>{while(step()){}};rs.onclick=init;init();
+</script></body></html>

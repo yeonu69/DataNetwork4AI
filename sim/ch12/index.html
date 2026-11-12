@@ -1,0 +1,24 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NAT 변환 표 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">12장 시뮬레이터</div><h1>NAT 변환 표 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>집 안 PC 하나와 접속할 웹 사이트를 골라 [접속]을 누릅니다.</li><li>공유기가 사설 IP:포트를 공인 IP:새 포트로 바꾸고 NAT 표에 한 줄을 적는 것을 봅니다.</li><li>여러 PC가 같은 사이트에 접속해도 공인 포트가 달라 응답이 제대로 돌아오는지 확인합니다.</li><li>[밖에서 먼저 접속]을 눌러 NAT 표에 없는 요청은 버려진다는 것도 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>PC <select id="pc"><option value="0">PC-A 192.168.0.23</option><option value="1">PC-B 192.168.0.50</option><option value="2">스마트폰 192.168.0.77</option></select></label>
+<label>사이트 <select id="sv"><option value="0">www.example.com 93.184.215.14:443</option><option value="1">DNS 8.8.8.8:53</option></select></label></div>
+<div class="row"><button id="go">접속</button><button class="sec" id="inb">밖에서 먼저 접속</button><button class="sec" id="rs">표 비우기</button></div>
+<div class="row" style="align-items:stretch;gap:10px"><div style="flex:1;min-width:250px" class="key" id="in"></div><div style="flex:1;min-width:250px" class="key" id="outp"></div></div>
+<b>NAT 변환 표 (공유기, 공인 IP 211.36.140.5)</b><div style="overflow-x:auto"><table id="tb"></table></div>
+<div class="log" id="log" style="margin-top:8px"></div></div>
+
+<div class="key"><b>핵심 3줄</b><br>• NAT는 사설 IP를 공인 IP 하나로 바꿔서 여러 기기가 인터넷을 함께 쓰게 합니다.<br>• 공유기는 포트 번호까지 바꿔(PAT) 누가 보낸 요청인지 NAT 표로 기억하고, 응답이 오면 표를 보고 되돌려 줍니다.<br>• 표에 없는 바깥 요청은 갈 곳을 몰라 버려지므로, 집 안 서버를 열려면 포트 포워딩을 따로 설정해야 합니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const PCs=[["PC-A","192.168.0.23"],["PC-B","192.168.0.50"],["스마트폰","192.168.0.77"]],SV=[["93.184.215.14",443],["8.8.8.8",53]],PUB="211.36.140.5";
+let T=[],nextPort=40001;
+function tbl(hi=-1){tb.innerHTML="<tr><th>안쪽(사설 IP:포트)</th><th>바깥(공인 IP:포트)</th><th>상대 서버</th></tr>"+(T.length?T.map((r,i)=>`<tr${i==hi?' class="hl"':''}><td class="mono">${r.in}</td><td class="mono">${r.out}</td><td class="mono">${r.dst}</td></tr>`).join(''):'<tr><td colspan=3 class="mut">(비어 있음)</td></tr>')}
+function pk(el,t,a,b){el.innerHTML=`<b>${t}</b><br><span class="mono">출발 ${a}<br>도착 ${b}</span>`}
+go.onclick=()=>{const p=PCs[+pc.value],s=SV[+sv.value];const sport=49152+Math.floor(Math.random()*16000);const inS=`${p[1]}:${sport}`,outS=`${PUB}:${nextPort++}`,dst=`${s[0]}:${s[1]}`;
+T.push({in:inS,out:outS,dst});pk(document.getElementById('in'),"① 집 안에서 나가는 패킷",inS,dst);pk(outp,"② 공유기가 바꾼 뒤",outS,dst);
+log.textContent+=`${p[0]} → ${dst}: 출발지 ${inS} 를 ${outS} 로 변환, 표에 기록\n응답 ${dst} → ${outS} 도착 → 표를 보고 ${inS} 로 되돌려 줌 ✔\n\n`;log.scrollTop=1e9;tbl(T.length-1)};
+inb.onclick=()=>{const port=8080;pk(document.getElementById('in'),"바깥에서 들어온 패킷","198.51.100.9:51515",`${PUB}:${port}`);outp.innerHTML='<b>공유기 판단</b><br><span class="bad">NAT 표에 '+PUB+':'+port+' 없음 → 버림</span>';
+log.textContent+=`외부 198.51.100.9 → ${PUB}:${port}: 표에 없는 포트라 누구에게 줄지 몰라 버림 ✘ (포트 포워딩 필요)\n\n`;log.scrollTop=1e9;tbl()};
+rs.onclick=()=>{T=[];nextPort=40001;tbl();log.textContent="";document.getElementById('in').innerHTML="<b>① 집 안에서 나가는 패킷</b>";outp.innerHTML="<b>② 공유기가 바꾼 뒤</b>"};rs.onclick();
+</script></body></html>

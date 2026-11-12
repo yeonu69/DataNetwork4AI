@@ -1,0 +1,35 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>전송 매체 거리·감쇠 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">4장 시뮬레이터</div><h1>전송 매체 거리·감쇠 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>전송 매체를 고릅니다(UTP Cat5e, Cat6A, 멀티모드 광, 싱글모드 광, Wi-Fi).</li><li>원하는 속도를 고르고 거리 슬라이더를 움직입니다.</li><li>그래프에서 거리가 늘어날수록 신호 세기가 떨어지는 모습과 수신 한계선을 비교합니다.</li><li>링크가 끊기는 거리를 찾아보고, 매체를 바꿔 몇 배나 멀리 가는지 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>매체 <select id="m"></select></label><label>속도 <select id="sp"></select></label></div>
+<div class="row"><label>거리 <input type="range" id="d" min="0" max="1000" value="400"> <b id="dv"></b></label></div>
+<canvas id="cv" width="760" height="280"></canvas>
+<div class="row"><span class="pill">링크 상태</span><span id="st" class="big"></span></div>
+<p class="mut" id="nt"></p></div>
+
+<div class="key"><b>핵심 3줄</b><br>• 모든 매체는 거리가 늘수록 신호가 약해지며(감쇠), 수신기가 알아볼 수 있는 한계를 넘으면 링크가 끊깁니다.<br>• 구리선(UTP)은 속도가 높을수록 갈 수 있는 거리가 짧아지며, 이더넷은 보통 100 m가 한계입니다.<br>• 광섬유는 감쇠가 매우 작아 수백 m(멀티모드)에서 수십 km(싱글모드)까지 갑니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>// max distance in meters per medium/speed (typical spec values)
+const M={"UTP Cat5e":{max:150,sp:{"100 Mbps":100,"1 Gbps":100},note:"Cat5e는 1 Gbps까지 100 m. 10 Gbps는 보장하지 않습니다."},
+"UTP Cat6A":{max:150,sp:{"1 Gbps":100,"10 Gbps":100},note:"Cat6A는 10 Gbps를 100 m까지 보장합니다."},
+"멀티모드 광(OM4)":{max:600,sp:{"10 Gbps":400,"100 Gbps":100,"400 Gbps":100},note:"멀티모드는 코어가 굵어 빛이 여러 경로로 퍼집니다(모드 분산). 속도가 높을수록 거리가 짧아집니다."},
+"싱글모드 광":{max:12000,sp:{"10 Gbps":10000,"100 Gbps":10000,"400 Gbps":2000},note:"싱글모드는 빛이 한 경로로만 가서 km 단위로 멀리 갑니다. 단위가 m에서 km로 바뀐 것에 주의하세요."},
+"Wi-Fi 5 GHz(실내)":{max:80,sp:{"1 Gbps 근처":10,"300 Mbps":25,"50 Mbps":45},note:"무선은 벽·사람·간섭 때문에 같은 거리라도 속도가 크게 달라집니다. 값은 실내 대략치입니다."}};
+const cv=document.getElementById('cv'),g=cv.getContext('2d');
+for(const k in M)m.add(new Option(k,k));m.value="UTP Cat6A";
+function fill(){sp.innerHTML="";for(const k in M[m.value].sp)sp.add(new Option(k,k));draw()}
+function draw(){const mm=M[m.value],lim=mm.sp[sp.value],dist=d.value/1000*mm.max,W=760,H=280;
+const fmt=x=>x>=2000?(x/1000).toFixed(1)+" km":Math.round(x)+" m";dv.textContent=fmt(dist);
+g.clearRect(0,0,W,H);const X=x=>50+x/mm.max*(W-70),Y=p=>20+(1-p)*(H-60);
+// signal curve: p = exp(-k x) normalized so that p(lim)=0.25
+const k=Math.log(4)/lim;g.fillStyle="#fde6ec";g.fillRect(50,Y(.25),W-70,Y(0)-Y(.25));
+g.strokeStyle="#d9534f";g.setLineDash([6,4]);g.beginPath();g.moveTo(50,Y(.25));g.lineTo(W-20,Y(.25));g.stroke();g.setLineDash([]);
+g.fillStyle="#d9534f";g.font="12px sans-serif";g.fillText("수신 한계",W-80,Y(.25)-5);
+g.strokeStyle="#6b4fbb";g.lineWidth=3;g.beginPath();for(let i=0;i<=300;i++){const x=i/300*mm.max;const p=Math.exp(-k*x);i?g.lineTo(X(x),Y(p)):g.moveTo(X(x),Y(p))}g.stroke();g.lineWidth=1;
+const p=Math.exp(-k*dist);g.fillStyle=p>=.25?"#2e8b57":"#d9534f";g.beginPath();g.arc(X(dist),Y(p),8,0,7);g.fill();
+g.fillStyle="#333";g.fillText("신호 세기",4,16);g.fillText("거리 →",W-60,H-8);for(let i=0;i<=4;i++){g.fillText(fmt(mm.max*i/4),X(mm.max*i/4)-14,H-24)}
+const ok=dist<=lim;st.innerHTML=ok?`<span class="ok">연결됨</span>`:`<span class="bad">끊김(신호 너무 약함)</span>`;
+nt.textContent=`${m.value} · ${sp.value}: 최대 약 ${fmt(lim)}. 지금 신호 세기 ${(p*100).toFixed(0)}%. ${mm.note}`}
+m.onchange=fill;sp.onchange=draw;d.oninput=draw;fill();
+</script></body></html>

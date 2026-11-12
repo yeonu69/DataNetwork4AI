@@ -1,0 +1,28 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>캡슐화 포장 시뮬레이터 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">2장 시뮬레이터</div><h1>캡슐화 포장 시뮬레이터</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>보낼 메시지를 입력합니다(기본값: GET /index.html).</li><li>[한 층 내려가기]를 누를 때마다 전송, 네트워크, 데이터 링크 계층의 헤더가 앞에 붙습니다.</li><li>맨 아래(물리 계층)까지 내려가면 [받는 쪽에서 풀기]로 거꾸로 헤더를 하나씩 벗겨 봅니다.</li><li>아래 표에서 계층마다 크기가 몇 바이트씩 늘어나는지 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>메시지 <input type="text" id="msg" value="GET /index.html" size="22"></label></div>
+<div class="row"><button id="dn">한 층 내려가기 ▼</button><button class="sec" id="up">받는 쪽에서 풀기 ▲</button><button class="sec" id="rs">처음으로</button></div>
+<div id="lv" class="row"></div>
+<div id="pkt" style="display:flex;flex-wrap:wrap;gap:0;margin:10px 0;min-height:64px"></div>
+<table id="tb"><tr><th>계층</th><th>붙는 이름표</th><th>주요 정보</th><th>누적 크기</th></tr></table>
+<p class="mut" id="ex"></p></div>
+
+<div class="key"><b>핵심 3줄</b><br>• 보내는 쪽은 위에서 아래로 내려가며 계층마다 헤더(이름표)를 붙이고, 받는 쪽은 아래에서 위로 올라가며 떼어 냅니다.<br>• 각 헤더에는 그 계층이 일을 하는 데 필요한 정보만 들어 있습니다(포트, IP 주소, MAC 주소).<br>• 데이터가 작아도 헤더 54바이트(TCP+IP+이더넷)가 붙으므로 작은 패킷일수록 오버헤드 비율이 큽니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+<script>const L=[{n:"응용 계층",u:"메시지",h:null,c:"#fbe3a8"},{n:"전송 계층",u:"세그먼트",h:["TCP 헤더",20,"출발 포트 37935 → 도착 포트 80, 순서 번호"],c:"#c9e8ff"},{n:"네트워크 계층",u:"패킷",h:["IP 헤더",20,"192.168.0.23 → 93.184.215.14, TTL 128"],c:"#d7f2d0"},{n:"데이터 링크 계층",u:"프레임",h:["이더넷 헤더",14,"3c:9c:0f:12:ab:cd → 88:36:6c:aa:bb:cc, 타입 0x0800"],c:"#f6d2e6",t:["FCS",4]},{n:"물리 계층",u:"비트",h:null,c:"#e0e0e0"}];
+let k=0;const pkt=document.getElementById('pkt'),tb=document.getElementById('tb'),ex=document.getElementById('ex');
+function blk(t,c,sz){return `<div style="background:${c};border:1px solid #888;padding:8px 6px;font-size:12.5px;text-align:center;min-width:56px"><b>${t}</b><br><span class="mut">${sz}B</span></div>`}
+function render(){const m=new TextEncoder().encode(msg.value).length;let s="",size=m,rows="";
+if(k>=4){pkt.innerHTML=`<div class="mono" style="font-size:12px;word-break:break-all;background:#1f1b2e;color:#c8ffc8;padding:8px;border-radius:8px;width:100%">${Array.from({length:Math.min(260,(m+58)*8)},()=>Math.random()<.5?0:1).join('')}…</div>`;}
+else{let inner=blk("데이터: "+msg.value,L[0].c,m);for(let i=1;i<=k;i++){inner=blk(L[i].h[0],L[i].c,L[i].h[1])+inner;if(L[i].t)inner+=blk(L[i].t[0],L[i].c,L[i].t[1]);}pkt.innerHTML=inner;}
+rows=`<tr${k==0?' class="hl"':''}><td>${L[0].n}</td><td>(없음)</td><td>${msg.value}</td><td>${m}B</td></tr>`;
+for(let i=1;i<=3;i++){size+=L[i].h[1]+(L[i].t?L[i].t[1]:0);rows+=`<tr${k==i?' class="hl"':''} style="opacity:${i<=k?1:.35}"><td>${L[i].n}</td><td>${L[i].h[0]}${L[i].t?" + FCS":""}</td><td>${L[i].h[2]}</td><td>${size}B</td></tr>`}
+rows+=`<tr${k==4?' class="hl"':''} style="opacity:${k>=4?1:.35}"><td>물리 계층</td><td>(프리앰블 8B)</td><td>전기·빛 신호로 변환</td><td>${size+8}B</td></tr>`;
+tb.innerHTML="<tr><th>계층</th><th>붙는 이름표</th><th>주요 정보</th><th>누적 크기</th></tr>"+rows;
+const dataB=m,tot=m+58;ex.textContent=`지금 단위: ${L[Math.min(k,4)].u}. 데이터 ${dataB}B를 보내려고 헤더·트레일러 ${58}B를 붙였습니다. 오버헤드 비율 ${(58/tot*100).toFixed(0)}%.`;
+document.getElementById('dn').disabled=k>=4;document.getElementById('up').disabled=k<=0}
+let dir=1;document.getElementById('dn').onclick=()=>{k=Math.min(4,k+1);render()};document.getElementById('up').onclick=()=>{k=Math.max(0,k-1);render()};
+document.getElementById('rs').onclick=()=>{k=0;render()};msg.oninput=render;render();
+</script></body></html>
