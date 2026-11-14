@@ -1,0 +1,35 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>숨은 단말과 RTS/CTS | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">5장 시뮬레이터</div><h1>숨은 단말과 RTS/CTS</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>노트북 A와 C는 둘 다 공유기(AP)와는 통하지만, 서로의 전파는 닿지 않습니다(점선 원이 전파가 닿는 범위).</li><li>RTS/CTS를 끈 채 [10번 보내기]를 누릅니다. A와 C는 "조용하네" 하고 동시에 보내 AP에서 자주 충돌합니다.</li><li>RTS/CTS를 켜고 다시 해 봅니다. AP가 외치는 CTS를 C도 듣기 때문에 C가 기다려 줍니다.</li><li>아래 타임라인에서 RTS·CTS라는 짧은 신호가 추가되는 대신 긴 데이터 충돌이 사라지는 것을 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><label><input type="checkbox" id="rc"> RTS/CTS 켜기</label><label>보낼 확률(혼잡도) <input type="range" id="p" min="10" max="90" value="50"> <b id="pv"></b>%</label><button id="go">10번 보내기</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 200"></svg>
+<canvas id="cv" width="760" height="170" style="margin-top:8px"></canvas>
+<div class="row"><span class="pill">성공</span><b id="ok" class="ok">0</b>&nbsp;<span class="pill">충돌</span><b id="bd" class="bad">0</b>&nbsp;<span class="pill">데이터 전송 효율</span><b id="ef" class="big"></b></div>
+<div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 무선에서는 "내가 듣기에 조용하다"가 "받는 쪽이 조용하다"를 뜻하지 않습니다. 서로 못 듣는 단말이 숨은 단말입니다.<br>• RTS/CTS는 보내기 전에 짧게 "보내도 돼?(RTS)"를 묻고, AP가 "지금 A 차례(CTS)"를 모두에게 알려 숨은 단말을 조용히 시킵니다.<br>• 짧은 신호가 추가되는 비용이 있으므로, 큰 프레임이나 숨은 단말이 많은 환경에서만 켜는 것이 보통입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const g=cv.getContext('2d');
+function diagram(hl){sv.innerHTML=`<circle cx="200" cy="100" r="230" fill="rgba(107,79,187,.06)" stroke="#6b4fbb" stroke-dasharray="6 6"/><circle cx="600" cy="100" r="230" fill="rgba(230,105,0,.06)" stroke="#e69500" stroke-dasharray="6 6"/>
+<line x1="200" y1="110" x2="400" y2="110" stroke="#cfc6ea" stroke-width="4"/><line x1="600" y1="110" x2="400" y2="110" stroke="#cfc6ea" stroke-width="4"/>
+<rect x="150" y="85" width="100" height="44" rx="8" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="200" y="112" text-anchor="middle" font-weight="700">노트북 A</text>
+<rect x="550" y="85" width="100" height="44" rx="8" fill="#fff" stroke="#e69500" stroke-width="2"/><text x="600" y="112" text-anchor="middle" font-weight="700">노트북 C</text>
+<rect x="350" y="80" width="100" height="54" rx="8" fill="${hl||"#fff"}" stroke="#333" stroke-width="2"/><text x="400" y="112" text-anchor="middle" font-weight="700">AP</text>
+<text x="400" y="30" text-anchor="middle" font-size="13" fill="#d9534f" font-weight="700">A와 C는 서로의 전파가 닿지 않음</text><text x="400" y="185" text-anchor="middle" font-size="12" fill="#666">점선 원 = 전파가 닿는 범위</text>`}
+function run(){pv.textContent=p.value;const on=rc.checked,pr=+p.value/100,W=760,H=170;g.clearRect(0,0,W,H);g.font="12px sans-serif";
+const rows=[["A",30,"#6b4fbb"],["C",70,"#e69500"],["AP",110,"#333"]];rows.forEach(([n,y])=>{g.fillStyle="#333";g.fillText(n,6,y+14)});
+let t=40,okc=0,bad=0,dataT=0;const X=v=>v,DATA=50,CTRL=8,L=[];
+for(let r=0;r<10&&t<W-60;r++){const a=Math.random()<pr||r==0,c=Math.random()<pr;if(!a&&!c){t+=12;continue}
+if(!on){if(a)g.fillStyle="#6b4fbb",g.fillRect(t,30,DATA,20);if(c){const off=Math.random()*30;g.fillStyle="#e69500";g.fillRect(t+(a?off:0),70,DATA,20)}
+if(a&&c){g.fillStyle="#d9534f";g.fillRect(t,110,DATA+30,20);g.fillStyle="#fff";g.fillText("충돌",t+20,124);bad++;L.push(`${r+1}회: A와 C가 동시에 보냄 → AP에서 충돌 (서로 못 들어서 몰랐음)`);t+=DATA+40}
+else{g.fillStyle="#2e8b57";g.fillRect(t,110,DATA,20);g.fillStyle="#fff";g.fillText("ACK",t+12,124);okc++;dataT+=DATA;L.push(`${r+1}회: ${a?"A":"C"}만 보냄 → 성공`);t+=DATA+12}}
+else{const who=a&&c?(Math.random()<.5?"A":"C"):a?"A":"C",y=who=="A"?30:70,col=who=="A"?"#6b4fbb":"#e69500",oth=who=="A"?70:30;
+g.fillStyle=col;g.fillRect(t,y,CTRL,20);g.fillStyle="#00a3a3";g.fillRect(t+CTRL+2,110,CTRL,20);g.fillStyle="#333";g.font="10px sans-serif";g.fillText("RTS",t-2,y-2);g.fillText("CTS",t+CTRL,107);g.font="12px sans-serif";
+if(a&&c){g.fillStyle="#ddd";g.fillRect(t+CTRL*2+4,oth,DATA,20);g.fillStyle="#666";g.fillText("대기(NAV)",t+CTRL*2+6,oth+14)}
+g.fillStyle=col;g.fillRect(t+CTRL*2+4,y,DATA,20);g.fillStyle="#2e8b57";g.fillRect(t+CTRL*2+4,110,DATA,20);g.fillStyle="#fff";g.fillText("ACK",t+CTRL*2+16,124);okc++;dataT+=DATA;
+L.push(`${r+1}회: ${who}가 RTS → AP가 CTS를 외침${a&&c?` → ${who=="A"?"C":"A"}도 CTS를 듣고 기다림`:""} → 성공`);t+=DATA+CTRL*2+16}}
+g.fillStyle="#666";g.fillText("시간 →",W-50,H-4);
+ok.textContent=okc;bd.textContent=bad;ef.textContent=(dataT/(t-40)*100).toFixed(0)+"%";log.textContent=L.join("\n");diagram(bad?"#ffd9d9":"#d6f5e3")}
+go.onclick=run;rc.onchange=run;p.oninput=()=>pv.textContent=p.value;diagram();pv.textContent=p.value;
+</script></body></html>

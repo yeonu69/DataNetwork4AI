@@ -1,0 +1,24 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QAM 성상도 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">5장 시뮬레이터</div><h1>QAM 성상도</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>변조 방식을 고르면 성상도(점 지도)가 나옵니다. 점 하나가 '진폭+위상' 조합 하나이고, 점마다 비트 묶음이 붙어 있습니다.</li><li>받는 쪽에 도착한 신호(작은 점)는 잡음 때문에 원래 자리에서 흩어집니다. 다른 칸으로 넘어간 점(빨강)이 오류입니다.</li><li>잡음을 고정하고 QPSK → 16-QAM → 64-QAM → 256-QAM으로 바꿔 보세요. 점이 촘촘해질수록 빨라지지만 오류가 늘어납니다.</li><li>Wi-Fi가 가까이에선 1024-QAM, 멀어지면 QPSK로 바꾸는(적응 변조) 이유를 생각해 봅니다.</li></ol></div>
+<div class="card"><div class="row"><label>변조 <select id="m"><option value="2">BPSK (1비트)</option><option value="4">QPSK (2비트)</option><option value="16" selected>16-QAM (4비트)</option><option value="64">64-QAM (6비트)</option><option value="256">256-QAM (8비트)</option><option value="1024">1024-QAM (10비트)</option></select></label>
+<label>잡음 <input type="range" id="nz" min="0" max="40" value="8"> <b id="nv"></b></label><button id="re">다시 받기</button></div>
+<div class="grid2"><canvas id="cv" width="380" height="380"></canvas><div><table id="tb"></table><div class="log" id="log" style="margin-top:8px"></div></div></div></div>
+<div class="key"><b>핵심 3줄</b><br>• QAM은 진폭과 위상을 함께 바꿔 점 하나에 여러 비트를 싣습니다. 점이 M개면 log₂M 비트입니다.<br>• 점을 늘리면 같은 시간에 더 많은 비트를 보내지만, 점 사이가 좁아져 작은 잡음에도 옆 점과 헷갈립니다.<br>• 그래서 무선 장비는 신호가 좋으면 촘촘한 QAM, 나쁘면 성긴 QAM으로 바꿔 가며 속도와 안정성을 맞춥니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const g=cv.getContext('2d');const gs=()=>Math.sqrt(-2*Math.log(Math.random()+1e-12))*Math.cos(2*Math.PI*Math.random());
+function pts(M){if(M==2)return[[-1,0],[1,0]];const k=Math.sqrt(M),a=[];for(let i=0;i<k;i++)for(let j=0;j<k;j++)a.push([(2*i-k+1)/(k-1),(2*j-k+1)/(k-1)]);return a}
+function gray(n){return n^(n>>1)}
+function run(){const M=+m.value,z=+nz.value/100;nv.textContent=nz.value;const P=pts(M),S=380,C=S/2,R=150,X=v=>C+v*R,Y=v=>C-v*R;g.clearRect(0,0,S,S);
+g.strokeStyle="#eee";g.beginPath();g.moveTo(0,C);g.lineTo(S,C);g.moveTo(C,0);g.lineTo(C,S);g.stroke();g.fillStyle="#999";g.font="11px sans-serif";g.fillText("I (같은 위상)",S-80,C-6);g.fillText("Q (90° 위상)",C+6,12);
+const N=1500;let err=0;for(let n=0;n<N;n++){const k=Math.floor(Math.random()*P.length),[x,y]=P[k],rx=x+gs()*z,ry=y+gs()*z;let b=0,bd=1e9;P.forEach(([px,py],j)=>{const d=(px-rx)**2+(py-ry)**2;if(d<bd){bd=d;b=j}});const e=b!=k;if(e)err++;
+g.fillStyle=e?"rgba(217,83,79,.8)":"rgba(107,79,187,.25)";g.fillRect(X(rx)-1,Y(ry)-1,2.5,2.5)}
+P.forEach(([x,y],i)=>{g.fillStyle="#1f1b2e";g.beginPath();g.arc(X(x),Y(y),M>64?2:4,0,7);g.fill()});
+if(M<=16){const k=Math.sqrt(M),bits=Math.log2(M);g.fillStyle="#e6457a";g.font="bold 11px monospace";P.forEach(([x,y],i)=>{const v=M==2?i:(gray(Math.floor(i/k))<<(bits/2))|gray(i%k);g.fillText(v.toString(2).padStart(bits,"0"),X(x)-bits*3.3,Y(y)-8)})}
+const b=Math.log2(M),gap=M==2?2:2/(Math.sqrt(M)-1);
+tb.innerHTML=`<tr><th>점 개수</th><td>${M}</td></tr><tr><th>점 하나의 비트</th><td>${b}비트</td></tr><tr><th>속도 (1초에 1억 심볼)</th><td><b>${b*100} Mbps</b></td></tr><tr><th>점 사이 간격</th><td>${gap.toFixed(3)}</td></tr><tr><th>심볼 오류율</th><td class="${err?"bad":"ok"}">${(err/N*100).toFixed(1)}%</td></tr>`;
+log.textContent=err/N>0.05?"오류가 너무 많습니다. 실제 장비라면 더 성긴 변조로 낮출 상황입니다.":err?"약간의 오류는 오류 정정 부호(FEC)가 고쳐 줍니다.":"깨끗합니다. 더 촘촘한 변조로 올려도 되겠습니다."}
+m.onchange=run;nz.oninput=run;re.onclick=run;run();
+</script></body></html>

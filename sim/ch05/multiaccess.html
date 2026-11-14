@@ -1,0 +1,30 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>다중 접속 4가지 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">5장 시뮬레이터</div><h1>다중 접속 4가지</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>가로는 시간, 세로는 주파수입니다. 칸 하나가 통신 자원 한 조각입니다. 사용자 4명이 이 자원을 나눠 써야 합니다.</li><li>FDMA, TDMA, CDMA, OFDMA 버튼을 차례로 눌러 각 방식이 자원을 어떻게 나누는지 봅니다.</li><li>OFDMA에서는 사용자별 '보낼 양'을 바꿔 보세요. 필요한 만큼 칸을 그때그때 나눠 줍니다(5G·Wi-Fi 6의 방식).</li><li>CDMA에서는 모두가 같은 칸을 동시에 쓰는데도 코드로 각자의 비트를 골라내는 계산을 아래에서 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><button data-m="F">FDMA (주파수 나누기)</button><button class="sec" data-m="T">TDMA (시간 나누기)</button><button class="sec" data-m="C">CDMA (코드 나누기)</button><button class="sec" data-m="O">OFDMA (조각 나누기)</button></div>
+<div class="row" id="dem"></div>
+<canvas id="cv" width="760" height="290"></canvas><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• FDMA는 주파수를, TDMA는 시간을 사람마다 나눠 줍니다. 단순하지만 쉬는 사람의 몫은 낭비됩니다.<br>• CDMA는 모두 같은 주파수·시간을 쓰되, 서로 직교하는 코드를 곱해 섞고 받는 쪽에서 내 코드로 다시 골라냅니다(3G).<br>• OFDMA는 시간×주파수 격자를 잘게 나눠 필요한 사람에게 필요한 만큼 그때그때 배정합니다. 4G·5G·Wi-Fi 6의 핵심입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const COL=["#6b4fbb","#e69500","#2e8b57","#e6457a"],NM=["가","나","다","라"],g=cv.getContext('2d'),TN=16,FN=8;let mode="F",D=[4,1,2,0];
+dem.innerHTML=NM.map((n,i)=>`<label style="color:${COL[i]};font-weight:700">${n} 보낼 양 <input type="range" min="0" max="8" value="${D[i]}" data-i="${i}" style="width:90px"></label>`).join("");
+dem.querySelectorAll("input").forEach(e=>e.oninput=()=>{D[+e.dataset.i]=+e.value;draw()});
+function grid(fill){const W=760,x0=60,y0=10,cw=(W-x0-10)/TN,ch=200/FN;g.clearRect(0,0,W,290);g.font="12px sans-serif";
+for(let t=0;t<TN;t++)for(let f=0;f<FN;f++){const c=fill(t,f);g.fillStyle=c||"#f4f4f4";g.fillRect(x0+t*cw+1,y0+(FN-1-f)*ch+1,cw-2,ch-2)}
+g.fillStyle="#666";g.fillText("시간 →",W-60,y0+215);g.save();g.translate(20,y0+150);g.rotate(-Math.PI/2);g.fillText("주파수 →",0,0);g.restore();
+NM.forEach((n,i)=>{g.fillStyle=COL[i];g.fillRect(x0+i*170,y0+228,14,14);g.fillStyle="#333";g.fillText(`사용자 ${n} (보낼 양 ${D[i]})`,x0+i*170+18,y0+240)})}
+function draw(){document.querySelectorAll('[data-m]').forEach(b=>b.className=b.dataset.m==mode?"":"sec");dem.style.display=mode=="C"?"none":"flex";let used=0,want=0;
+const act=(i,t)=>D[i]>0&&(t%8)<D[i];
+if(mode=="F"){grid((t,f)=>{const i=Math.floor(f/2);if(act(i,t)){used++;return COL[i]}return COL[i]+"30"});log.textContent=`FDMA: 주파수를 2칸씩 사람마다 고정으로 나눴습니다. 흐린 칸은 주인이 있지만 보낼 것이 없어 노는 자원입니다.\n활용률 ${(used/128*100).toFixed(0)}%. 라디오 방송국, 1G 휴대폰이 이 방식입니다.`}
+if(mode=="T"){grid((t,f)=>{const i=t%4;if(D[i]>0&&Math.floor(t/4)<Math.ceil(D[i]/2)){used++;return COL[i]}return COL[i]+"30"});log.textContent=`TDMA: 시간을 돌아가며 나눠 씁니다(가→나→다→라). 내 차례에는 전체 주파수를 다 씁니다.\n보낼 것이 없는 사람의 차례(흐린 칸)도 그냥 지나갑니다. 활용률 ${(used/128*100).toFixed(0)}%. 2G(GSM)가 이 방식입니다.`}
+if(mode=="O"){const tot=D.reduce((a,b)=>a+b,0);let cells=[];const per=D.map(d=>tot?Math.round(d/tot*128):0);let k=0;const own=Array(128).fill(-1);
+let idx=0;for(let i=0;i<4;i++)for(let n=0;n<per[i]&&idx<128;n++)own[idx++]=i;
+grid((t,f)=>{const i=own[t*FN+f];return i>=0?COL[i]:null});log.textContent=`OFDMA: 보낼 양에 비례해 칸을 ${per.map((p,i)=>NM[i]+" "+p+"칸").join(", ")} 나눠 줬습니다.\n쉬는 사람에게는 0칸, 많이 보낼 사람에게는 많이. 기지국·AP가 수 ms마다 이 배정을 다시 합니다(스케줄링).`}
+if(mode=="C"){grid((t,f)=>{const n=[0,1,2,3].filter(i=>((t+f+i)%2==0)||i<2);return COL[(t*3+f)%4]+"aa"});
+const code=[[1,1,1,1],[1,-1,1,-1],[1,1,-1,-1],[1,-1,-1,1]],bit=[1,-1,1,1];const sum=[0,1,2,3].map(c=>code.reduce((a,cd,i)=>a+cd[c]*bit[i],0));
+let s="CDMA: 네 사람이 같은 칸을 동시에 씁니다. 대신 서로 직교하는 코드를 하나씩 가집니다.\n";code.forEach((cd,i)=>s+=`  ${NM[i]}: 비트 ${bit[i]>0?1:0}(${bit[i]>0?"+1":"-1"}) × 코드 [${cd.join(",")}] = [${cd.map(v=>v*bit[i]).join(",")}]\n`);
+s+=`공중에서 모두 더해진 신호 = [${sum.join(", ")}]\n받는 쪽에서 '나'의 코드를 곱해 더하고 4로 나누면: `+code.map((cd,i)=>`${NM[i]} → ${cd.reduce((a,v,c)=>a+v*sum[c],0)/4}`).join(", ")+"\n→ 섞인 신호에서 각자의 비트가 정확히 다시 나옵니다! 다른 사람 신호는 0으로 지워집니다.";log.textContent=s}}
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{mode=b.dataset.m;draw()});draw();
+</script></body></html>

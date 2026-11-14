@@ -1,0 +1,37 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>허브와 스위치 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">5장 시뮬레이터</div><h1>허브와 스위치</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>가운데 장비를 [허브]로 두고 [A → C 보내기]를 누릅니다. 허브는 받은 신호를 모든 포트로 복사하므로 B와 D에게도 프레임이 갑니다.</li><li>[A → C와 B → D 동시에]를 누르면 허브 안에서 두 신호가 부딪혀 충돌이 납니다.</li><li>가운데 장비를 [스위치]로 바꾸고 같은 버튼을 눌러 봅니다. 처음 한 번은 주소를 몰라 모두에게 보내지만(플러딩), 배운 뒤에는 목적지에만 보냅니다.</li><li>스위치에서는 두 쌍이 동시에 보내도 충돌이 없다는 것을 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><button id="hb">허브</button><button class="sec" id="sw">스위치</button><span class="mut" id="mode"></span></div>
+<div class="row"><button id="one">A → C 보내기</button><button id="two">A → C와 B → D 동시에</button><button class="sec" id="rs">처음으로</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 300"></svg>
+<div class="row"><span class="pill">보낸 프레임</span><b id="ns">0</b>&nbsp;<span class="pill">충돌</span><b id="nc" class="bad">0</b>&nbsp;<span class="pill">엉뚱한 PC가 받은 횟수</span><b id="nx">0</b></div>
+<div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 허브는 1계층 장비라 주소를 보지 않고 신호를 모든 포트로 복사합니다. 연결된 모두가 한 충돌 도메인에 있습니다.<br>• 스위치는 2계층 장비라 MAC 주소를 배워 목적지 포트로만 보내고, 포트마다 따로 충돌 도메인이 됩니다(전이중이면 충돌 자체가 없음).<br>• 그래서 오늘날 유선 LAN에서는 CSMA/CD가 거의 쓰이지 않고, 허브는 스위치로 모두 바뀌었습니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const P={A:[100,60],B:[700,60],C:[100,240],D:[700,240]},HUB=[400,150],COL={A:"#6b4fbb",B:"#e69500"};let isHub=true,mac={},busy=false,cnt={s:0,c:0,x:0};
+function base(extra=""){let s="";for(const k in P){s+=`<line x1="${P[k][0]}" y1="${P[k][1]}" x2="${HUB[0]}" y2="${HUB[1]}" stroke="#cfc6ea" stroke-width="5"/>`}
+s+=`<rect x="${HUB[0]-70}" y="${HUB[1]-30}" width="140" height="60" rx="10" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="${HUB[0]}" y="${HUB[1]-4}" text-anchor="middle" font-weight="700">${isHub?"허브":"스위치"}</text><text x="${HUB[0]}" y="${HUB[1]+16}" text-anchor="middle" font-size="11" fill="#666">${isHub?"모든 포트로 복사":"MAC 표: "+(Object.keys(mac).join(",")||"비어 있음")}</text>`;
+for(const k in P){s+=`<g id="pc${k}"><rect x="${P[k][0]-45}" y="${P[k][1]-25}" width="90" height="50" rx="8" fill="#fff" stroke="#9b86d9" stroke-width="2"/><text x="${P[k][0]}" y="${P[k][1]+5}" text-anchor="middle" font-weight="700">PC ${k}</text></g>`}sv.innerHTML=s+extra}
+const wait=t=>new Promise(r=>setTimeout(r,t));
+function dot(id,c){const e=document.createElementNS("http://www.w3.org/2000/svg","circle");e.setAttribute("r",11);e.setAttribute("fill",c);e.id=id;sv.appendChild(e);return e}
+function mv(e,a,b,T=600){return new Promise(r=>{const t0=performance.now();function f(t){const u=Math.min(1,(t-t0)/T);e.setAttribute("cx",a[0]+(b[0]-a[0])*u);e.setAttribute("cy",a[1]+(b[1]-a[1])*u);u<1?requestAnimationFrame(f):r()}requestAnimationFrame(f)})}
+function mark(k,c){const r=sv.querySelector(`#pc${k} rect`);r.setAttribute("fill",c)}
+function upd(){ns.textContent=cnt.s;nc.textContent=cnt.c;nx.textContent=cnt.x}
+async function send(pairs){if(busy)return;busy=true;base();cnt.s+=pairs.length;
+const ds=pairs.map(([s])=>dot("d"+s,COL[s]));await Promise.all(pairs.map(([s],i)=>mv(ds[i],P[s],HUB)));
+if(isHub&&pairs.length>1){cnt.c++;ds.forEach(d=>d.remove());const bang=dot("x","#d9534f");bang.setAttribute("r",30);bang.setAttribute("cx",HUB[0]);bang.setAttribute("cy",HUB[1]);
+log.textContent+=`💥 충돌! 두 신호가 허브 안에서 겹쳐 깨졌습니다. 모두에게 잼(jam) 신호가 퍼지고, A와 B는 무작위 시간을 기다렸다가 다시 보냅니다(백오프).\n`;
+const js=Object.keys(P).map(k=>{const j=dot("j"+k,"#d9534f");return mv(j,HUB,P[k],400).then(()=>j.remove())});await Promise.all(js);bang.remove();upd();busy=false;log.scrollTop=1e9;return}
+const all=[];pairs.forEach(([s,d],i)=>{ds[i].remove();let outs;
+if(isHub)outs=Object.keys(P).filter(k=>k!=s);else{const known=mac[d];mac[s]=1;outs=known?[d]:Object.keys(P).filter(k=>k!=s);log.textContent+=known?`스위치: ${d}의 위치를 알고 있으므로 ${d} 포트로만 보냄.\n`:`스위치: ${s}의 위치를 배움. ${d}의 위치는 아직 몰라서 모든 포트로 보냄(플러딩).\n`}
+if(isHub)log.textContent+=`허브: ${s}가 보낸 신호를 ${outs.join(", ")} 모두에게 복사.\n`;
+outs.forEach(o=>{const e=dot(`o${s}${o}`,COL[s]);all.push(mv(e,HUB,P[o]).then(()=>{e.remove();if(o==d){mark(o,"#d6f5e3")}else{mark(o,"#ffe7cc");cnt.x++}}))});
+if(!isHub)mac[d]=mac[d];});
+await Promise.all(all);if(!isHub)pairs.forEach(([s,d])=>{mac[d]=1});
+log.textContent+=pairs.map(([s,d])=>`${s} → ${d} 도착 ✅`).join(", ")+"  (주황 = 자기 것이 아니라서 버린 PC)\n";upd();busy=false;log.scrollTop=1e9;
+const t=sv.querySelector("text:nth-of-type(2)");}
+function setMode(h){isHub=h;mac={};hb.className=h?"":"sec";sw.className=h?"sec":"";mode.textContent=h?"충돌 도메인 1개 (4대가 한 선을 나눠 쓰는 셈)":"충돌 도메인 4개 (포트마다 따로)";base();log.textContent=""}
+one.onclick=()=>send([["A","C"]]);two.onclick=()=>send([["A","C"],["B","D"]]);hb.onclick=()=>setMode(true);sw.onclick=()=>setMode(false);rs.onclick=()=>{cnt={s:0,c:0,x:0};upd();setMode(isHub)};setMode(true);
+</script></body></html>

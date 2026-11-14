@@ -1,0 +1,32 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PFC와 ECN | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">5장 시뮬레이터</div><h1>PFC와 ECN: 패킷을 잃지 않는 이더넷</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>GPU 서버 여러 대가 한 서버에게 동시에 데이터를 보냅니다(인캐스트). 스위치 출구는 하나라서 버퍼(대기열)가 차오릅니다.</li><li>[아무것도 안 함]으로 실행하면 버퍼가 넘쳐 패킷을 버리고(빨간 점), 손실이 생기면 GPU 통신은 크게 느려집니다.</li><li>[PFC]는 버퍼가 거의 차면 보내는 쪽에 "잠깐 멈춰(PAUSE)"를 보냅니다. [ECN]은 미리 "혼잡해요" 표시를 붙여 보내는 쪽이 스스로 속도를 줄이게 합니다.</li><li>[PFC+ECN]으로 두 방법을 함께 쓰면 손실 없이, 멈춤도 적게 운영되는 것을 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><button data-m="0">아무것도 안 함</button><button class="sec" data-m="1">PFC만</button><button class="sec" data-m="2">ECN만</button><button class="sec" data-m="3">PFC+ECN</button><label>보내는 서버 <input type="range" id="ns" min="2" max="8" value="4"> <b id="nv"></b>대</label></div>
+<canvas id="cv" width="760" height="300"></canvas>
+<table><tr><th>버린 패킷</th><th>PAUSE 시간</th><th>평균 버퍼</th><th>출구 활용률</th></tr><tr><td id="r1"></td><td id="r2"></td><td id="r3"></td><td id="r4"></td></tr></table></div>
+<div class="key"><b>핵심 3줄</b><br>• 스위치 시대의 충돌은 '혼잡'입니다. 여러 입력이 한 출구로 몰리면 버퍼가 넘쳐 패킷을 버립니다.<br>• PFC는 버퍼가 차기 직전 앞 장비를 잠깐 멈춰 손실을 막지만, 멈춤이 번지면(혼잡 확산) 엉뚱한 흐름까지 느려집니다.<br>• ECN은 일찍 "혼잡"을 알려 보내는 쪽이 속도를 줄이게 하므로, PFC가 발동할 일 자체를 줄여 줍니다. AI 데이터센터는 둘을 함께 씁니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const g=cv.getContext('2d');let mode=0,anim=null;
+function sim(){const N=+ns.value,T=300,BUF=100,XOFF=80,XON=50,K=30;let q=0,drop=0,pause=0,paused=false,rate=Array(N).fill(1),sent=0,H=[],qs=0;
+for(let t=0;t<T;t++){const on=t<200;let inn=0;if(on&&!paused)for(let i=0;i<N;i++)inn+=rate[i]*0.5;
+let d=0;if(q+inn>BUF){d=q+inn-BUF;inn-=d;drop+=d}q+=inn;const out=Math.min(q,1);q-=out;sent+=out;qs+=q;
+const mark=(mode==2||mode==3)&&q>K;if(mark)rate=rate.map(r=>Math.max(0.05,r*0.85));else rate=rate.map(r=>Math.min(1,r+0.01));
+if(mode==1||mode==3){if(q>XOFF)paused=true;if(q<XON)paused=false}if(paused)pause++;
+H.push([q,d>0,paused,rate.reduce((a,b)=>a+b,0)/N,mark])}return {H,drop,pause,avg:qs/300,util:sent/Math.min(300,200*Math.max(1,N*0.5))}}
+function draw(R,upto){const W=760,Hh=300,X=t=>50+t/300*(W-70),Y=v=>230-v/110*200;g.clearRect(0,0,W,Hh);g.font="11px sans-serif";
+g.fillStyle="#666";[0,50,100].forEach(v=>{g.fillText(v,20,Y(v)+4);g.strokeStyle="#eee";g.beginPath();g.moveTo(50,Y(v));g.lineTo(W-20,Y(v));g.stroke()});g.fillText("버퍼(패킷)",2,12);g.fillText("시간 →",W-50,250);
+g.strokeStyle="#d9534f";g.setLineDash([5,4]);g.beginPath();g.moveTo(50,Y(100));g.lineTo(W-20,Y(100));g.stroke();g.setLineDash([]);g.fillStyle="#d9534f";g.fillText("버퍼 끝(넘치면 버림)",W-150,Y(100)-4);
+if(mode==1||mode==3){g.fillStyle="#e69500";g.fillText("PFC 멈춤 기준 80",W-130,Y(80)-4);g.strokeStyle="#e69500";g.beginPath();g.moveTo(50,Y(80));g.lineTo(W-20,Y(80));g.stroke()}
+if(mode==2||mode==3){g.fillStyle="#00a3a3";g.fillText("ECN 표시 기준 30",W-130,Y(30)-4);g.strokeStyle="#00a3a3";g.beginPath();g.moveTo(50,Y(30));g.lineTo(W-20,Y(30));g.stroke()}
+R.H.slice(0,upto).forEach(([q,d,p,r,m],t)=>{if(p){g.fillStyle="rgba(230,105,0,.18)";g.fillRect(X(t),Y(110),X(1)-X(0)+1,Y(0)-Y(110))}});
+g.strokeStyle="#6b4fbb";g.lineWidth=2.5;g.beginPath();R.H.slice(0,upto).forEach(([q],t)=>t?g.lineTo(X(t),Y(q)):g.moveTo(X(t),Y(q)));g.stroke();g.lineWidth=1;
+R.H.slice(0,upto).forEach(([q,d],t)=>{if(d){g.fillStyle="#d9534f";g.beginPath();g.arc(X(t),Y(q)-6,3,0,7);g.fill()}});
+g.strokeStyle="#2e8b57";g.beginPath();R.H.slice(0,upto).forEach(([,,,r],t)=>{const y=290-r*35;t?g.lineTo(X(t),y):g.moveTo(X(t),y)});g.stroke();g.fillStyle="#2e8b57";g.fillText("보내는 속도",2,275);
+g.fillStyle="#666";g.fillText("주황 배경 = PAUSE 중, 빨간 점 = 버린 패킷",260,250)}
+function run(){nv.textContent=ns.value;document.querySelectorAll('[data-m]').forEach(b=>b.className=+b.dataset.m==mode?"":"sec");cancelAnimationFrame(anim);const R=sim();let u=0;
+(function f(){u+=6;draw(R,Math.min(u,300));if(u<300)anim=requestAnimationFrame(f)})();
+r1.innerHTML=`<b class="${R.drop?"bad":"ok"}">${R.drop.toFixed(0)}개</b>`;r2.textContent=R.pause+" 틱";r3.textContent=R.avg.toFixed(1);r4.textContent=Math.min(100,R.util*100).toFixed(0)+"%"}
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{mode=+b.dataset.m;run()});ns.oninput=run;run();
+</script></body></html>
