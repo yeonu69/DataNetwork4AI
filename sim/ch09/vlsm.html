@@ -1,0 +1,26 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VLSM 설계기 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">9장 시뮬레이터</div><h1>VLSM 설계기</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>나눠 쓸 주소 블록(예: 192.168.20.0/24)과 부서별 필요한 PC 수를 입력합니다. 행을 추가하거나 지울 수 있습니다.</li><li>[설계]를 누르면 큰 부서부터 차례로, 필요한 수를 담는 가장 작은 서브넷을 배정합니다.</li><li>아래 막대에서 VLSM(크기 맞춤)과 모두 같은 크기로 나눈 경우를 비교해 낭비가 얼마나 줄었는지 봅니다.</li><li>라우터 사이 연결(PC 2대짜리, /30)을 추가해 보세요. 연결 하나에 주소 4개면 충분합니다.</li></ol></div>
+<div class="card"><div class="row"><label>주소 블록 <input type="text" id="bk" value="192.168.20.0/24" class="mono" style="width:160px"></label><button id="go">설계</button><button class="sec" id="ad">부서 추가</button><button class="sec" id="p2p">라우터 연결(/30) 추가</button></div>
+<table id="inp"></table><svg class="stage" id="sv" viewBox="0 0 800 150" style="margin-top:8px"></svg><table id="tb" style="margin-top:8px"></table><div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• VLSM은 서브넷마다 크기(프리픽스)를 다르게 해서, 필요한 만큼만 주소를 떼어 주는 방법입니다.<br>• 순서가 중요합니다. 큰 서브넷부터 배정해야 블록 경계(크기의 배수)가 깔끔하게 맞습니다.<br>• 필요한 PC 수 + 2(네트워크·브로드캐스트)를 담는 가장 작은 2의 거듭제곱을 고르면 됩니다. 60명이면 64(/26), 2명이면 4(/30).</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+let R=[["영업부",50],["개발부",100],["회의실 Wi-Fi",20],["서버실",10]];const COL=["#6b4fbb","#e69500","#2e8b57","#e6457a","#3a86ff","#00a3a3","#8d6e63","#b5179e","#7cb518","#ff7b00"];
+function tbl(){inp.innerHTML="<tr><th>이름</th><th>필요한 PC 수</th><th></th></tr>"+R.map((r,i)=>`<tr><td><input type="text" value="${r[0]}" data-i="${i}" data-k="0" style="width:140px"></td><td><input type="number" min="1" max="4000" value="${r[1]}" data-i="${i}" data-k="1" style="width:90px"></td><td><button class="sec" data-del="${i}">지우기</button></td></tr>`).join("");
+inp.querySelectorAll("input").forEach(e=>e.oninput=()=>{R[+e.dataset.i][+e.dataset.k]=e.dataset.k=="1"?+e.value:e.value});inp.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{R.splice(+b.dataset.del,1);tbl();run()})}
+const toS=n=>[24,16,8,0].map(k=>n>>>k&255).join(".");
+function run(){const m=bk.value.trim().match(/^(\d+\.\d+\.\d+\.\d+)\/(\d+)$/);if(!m){log.textContent="블록을 192.168.20.0/24 형식으로 입력하세요.";return}
+const p=m[1].split(".").map(Number),P=+m[2],size=Math.pow(2,32-P);let base=((p[0]<<24)|(p[1]<<16)|(p[2]<<8)|p[3])>>>0;base=(base&((0xffffffff<<(32-P))>>>0))>>>0;
+const items=R.map((r,i)=>({n:r[0],h:+r[1],i})).sort((a,b)=>b.h-a.h);let off=0,ok=true;
+items.forEach(it=>{let s=4;while(s-2<it.h)s*=2;it.s=s;it.p=32-Math.log2(s);if(off%s)off=Math.ceil(off/s)*s;it.o=off;off+=s;if(off>size)ok=false});
+const fixedS=Math.max(...items.map(x=>x.s)),fixedTot=fixedS*items.length;
+let s="";const X=v=>10+v/size*780;s+=`<text x="10" y="14" font-size="12" fill="#333" font-weight="700">VLSM (크기 맞춤)</text>`;items.forEach(it=>{if(it.o+it.s>size)return;const c=COL[it.i%10];s+=`<rect x="${X(it.o)}" y="20" width="${X(it.o+it.s)-X(it.o)-1}" height="40" fill="${c}" opacity=".35"/><rect x="${X(it.o)}" y="20" width="${(X(it.o+it.s)-X(it.o)-1)*(it.h+2)/it.s}" height="40" fill="${c}"/>`;if(X(it.o+it.s)-X(it.o)>50)s+=`<text x="${X(it.o)+4}" y="44" font-size="11" fill="#fff" font-weight="700">${it.n}</text>`});
+s+=`<rect x="${X(Math.min(off,size))}" y="20" width="${Math.max(0,X(size)-X(Math.min(off,size)))}" height="40" fill="#f4f4f4" stroke="#ddd"/><text x="${X(Math.min(off,size))+6}" y="44" font-size="11" fill="#666">${off<size?"남은 공간 "+(size-off)+"개":""}</text>`;
+s+=`<text x="10" y="84" font-size="12" fill="#333" font-weight="700">모두 같은 크기(/${32-Math.log2(fixedS)})로 나눈다면</text>`;items.forEach((it,k)=>{const o=k*fixedS;if(o+fixedS>size){return}const c=COL[it.i%10];s+=`<rect x="${X(o)}" y="90" width="${X(o+fixedS)-X(o)-1}" height="40" fill="${c}" opacity=".35"/><rect x="${X(o)}" y="90" width="${(X(o+fixedS)-X(o)-1)*(it.h+2)/fixedS}" height="40" fill="${c}"/>`});
+if(fixedTot>size)s+=`<text x="400" y="145" text-anchor="middle" font-size="12" fill="#d9534f" font-weight="700">같은 크기로는 ${fixedTot}개가 필요해 /${P} 블록(${size}개)에 다 들어가지 않습니다!</text>`;sv.innerHTML=s;
+tb.innerHTML="<tr><th>순서</th><th>이름</th><th>필요</th><th>배정</th><th>범위</th><th>남는 주소</th></tr>"+items.map((it,k)=>`<tr${it.o+it.s>size?' style="color:#d9534f"':""}><td>${k+1}</td><td>${it.n}</td><td>${it.h}</td><td class="mono">${toS(base+it.o)}/${it.p}</td><td class="mono">${toS(base+it.o+1)} ~ ${toS(base+it.o+it.s-2)}</td><td>${it.s-2-it.h}</td></tr>`).join("");
+log.textContent=ok?`필요 주소 ${items.reduce((a,x)=>a+x.h,0)}개 → VLSM으로 ${off}개 사용 (블록 ${size}개 중 ${size-off}개 남음)\n진하게 칠한 부분 = 실제로 쓰는 주소, 연하게 칠한 부분 = 배정했지만 남는 주소`:`❌ 블록이 부족합니다. 필요 ${off}개 > 블록 ${size}개. 더 큰 블록(/${P-1})을 쓰세요.`}
+ad.onclick=()=>{R.push(["새 부서",30]);tbl();run()};p2p.onclick=()=>{R.push(["라우터 연결 "+(R.filter(r=>r[0].startsWith("라우터")).length+1),2]);tbl();run()};go.onclick=run;bk.oninput=run;tbl();run();
+</script></body></html>

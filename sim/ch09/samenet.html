@@ -1,0 +1,29 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>같은 네트워크일까? | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">9장 시뮬레이터</div><h1>같은 네트워크일까?</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>PC A가 PC B에게 패킷을 보내려고 합니다. 두 PC의 IP, 마스크, A의 게이트웨이를 입력하거나 예시 버튼을 누릅니다.</li><li>A는 "내 마스크로 B의 주소를 잘랐을 때 내 네트워크와 같은가?"만 계산합니다. 그 과정이 단계별로 나옵니다.</li><li>같으면 B에게 직접(ARP로 B의 MAC을 찾아) 보내고, 다르면 게이트웨이에게 맡깁니다.</li><li>'/26 경계' 예시와 '게이트웨이 오타' 예시로 실습에서 자주 나오는 실수를 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><button class="sec" data-e="0">같은 /24</button><button class="sec" data-e="1">다른 /24</button><button class="sec" data-e="2">/26 경계</button><button class="sec" data-e="3">게이트웨이 오타</button><button class="sec" data-e="4">마스크가 서로 다름</button></div>
+<table><tr><th></th><th>IP 주소</th><th>마스크(프리픽스)</th><th>게이트웨이</th></tr>
+<tr><td><b>PC A</b></td><td><input type="text" id="ai" class="mono" style="width:130px"></td><td>/<input type="number" id="am" min="8" max="30" style="width:60px"></td><td><input type="text" id="ag" class="mono" style="width:130px"></td></tr>
+<tr><td><b>PC B</b></td><td><input type="text" id="bi" class="mono" style="width:130px"></td><td>/<input type="number" id="bm" min="8" max="30" style="width:60px"></td><td class="mut">(B 쪽 판단은 아래에)</td></tr></table>
+<svg class="stage" id="sv" viewBox="0 0 800 150" style="margin-top:8px"></svg><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 보내는 PC는 "목적지 IP AND 내 마스크 = 내 네트워크 주소?"로 직접 보낼지 게이트웨이로 보낼지를 정합니다.<br>• 같은 네트워크면 ARP로 상대 MAC을 찾아 바로 보내고, 다르면 게이트웨이의 MAC으로 프레임을 써서 라우터에게 맡깁니다.<br>• 게이트웨이는 반드시 내 네트워크 안의 주소여야 합니다. 마스크나 게이트웨이 오타는 "같은 방인데 안 됨", "밖으로 못 나감" 증상을 만듭니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const EX=[["192.168.0.23",24,"192.168.0.1","192.168.0.50",24],["192.168.0.23",24,"192.168.0.1","192.168.1.50",24],["192.168.10.62",26,"192.168.10.1","192.168.10.65",26],["192.168.0.23",24,"192.168.1.1","8.8.8.8",24],["192.168.0.23",24,"192.168.0.1","192.168.0.200",25]];
+const toN=s=>{const p=s.trim().split(".").map(Number);if(p.length!=4||p.some(x=>isNaN(x)||x<0||x>255))return null;return((p[0]<<24)|(p[1]<<16)|(p[2]<<8)|p[3])>>>0};
+const toS=n=>[24,16,8,0].map(k=>n>>>k&255).join("."),mk=p=>p?(0xffffffff<<(32-p))>>>0:0;
+function load(i){[ai.value,am.value,ag.value,bi.value,bm.value]=EX[i];run()}
+function run(){const A=toN(ai.value),B=toN(bi.value),G=toN(ag.value),pa=+am.value,pb=+bm.value;if(A==null||B==null||G==null||!pa||!pb){log.textContent="주소 형식을 확인하세요.";return}
+const MA=mk(pa),na=(A&MA)>>>0,nb=(B&MA)>>>0,same=na==nb,gok=((G&MA)>>>0)==na;const nbB=(B&mk(pb))>>>0,backSame=((A&mk(pb))>>>0)==nbB;
+let L=`① A의 네트워크 = ${toS(A)} AND /${pa}(${toS(MA)}) = ${toS(na)}\n② B를 A의 마스크로 자르면 = ${toS(B)} AND /${pa} = ${toS(nb)}\n③ ${toS(na)} ${same?"=":"≠"} ${toS(nb)} → ${same?"같은 네트워크! B에게 직접 보냄 (ARP로 B의 MAC 찾기)":"다른 네트워크 → 게이트웨이에게 맡김"}\n`;
+let res="ok",msg="";if(!same){if(!gok){res="bad";L+=`④ ❌ 그런데 게이트웨이 ${toS(G)}는 내 네트워크(${toS(na)}/${pa}) 밖에 있습니다! ARP로 찾을 수 없어 패킷이 나가지 못합니다. 게이트웨이 오타를 의심하세요.`}else L+=`④ 게이트웨이 ${toS(G)}의 MAC으로 프레임을 써서 라우터에게 넘깁니다.`}
+if(same&&!backSame){res="warn";L+=`\n⚠️ 하지만 B는 마스크 /${pb}로 보면 A가 자기 네트워크 밖이라고 판단해 답장을 게이트웨이로 보냅니다. 마스크가 서로 다르면 한쪽 방향만 되는 이상한 증상이 생깁니다.`}
+log.textContent=L;
+const c=res=="bad"?"#d9534f":res=="warn"?"#e69500":"#2e8b57";let s=`<rect x="20" y="50" width="130" height="50" rx="8" fill="#efe9ff" stroke="#6b4fbb" stroke-width="2"/><text x="85" y="72" text-anchor="middle" font-weight="700">PC A</text><text x="85" y="90" text-anchor="middle" font-size="11">${toS(A)}/${pa}</text>
+<rect x="650" y="50" width="130" height="50" rx="8" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="715" y="72" text-anchor="middle" font-weight="700">PC B</text><text x="715" y="90" text-anchor="middle" font-size="11">${toS(B)}/${pb}</text>`;
+if(same)s+=`<line x1="150" y1="75" x2="645" y2="75" stroke="${c}" stroke-width="5"/><text x="400" y="65" text-anchor="middle" fill="${c}" font-weight="700">직접 전달 (스위치만 거침)</text>`;
+else s+=`<rect x="335" y="5" width="130" height="44" rx="8" fill="#fff" stroke="${c}" stroke-width="2"/><text x="400" y="25" text-anchor="middle" font-weight="700">게이트웨이</text><text x="400" y="41" text-anchor="middle" font-size="11">${toS(G)}</text><path d="M150 70 L335 30" stroke="${c}" stroke-width="5" ${gok?"":'stroke-dasharray="8 6"'}/>`+(gok?`<path d="M465 30 L650 70" stroke="${c}" stroke-width="5"/><text x="400" y="130" text-anchor="middle" fill="${c}" font-weight="700">라우터가 B의 네트워크로 전달</text>`:`<text x="245" y="80" font-size="30" fill="#d9534f">✕</text><text x="400" y="130" text-anchor="middle" fill="#d9534f" font-weight="700">게이트웨이에 닿을 수 없음</text>`);
+sv.innerHTML=s}
+[ai,am,ag,bi,bm].forEach(e=>e.oninput=run);document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>load(+b.dataset.e));load(2);
+</script></body></html>

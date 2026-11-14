@@ -1,0 +1,17 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>서브넷 나누기 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">9장 시뮬레이터</div><h1>서브넷 나누기: 클릭해서 반씩</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>막대 전체가 192.168.10.0/24 (주소 256개)입니다. 막대 조각을 누르면 그 조각이 정확히 반으로 나뉘고, 프리픽스가 1 늘어납니다.</li><li>/24를 두 번 나눠 /26 네 개를 만들어 보세요. 각 조각의 네트워크 주소, 사용 가능 범위, 브로드캐스트가 표에 나옵니다.</li><li>조각 하나만 더 잘게 나눠 보면 크기가 서로 다른 서브넷이 섞입니다. 이것이 VLSM(다음 시뮬레이터)입니다.</li><li>[합치기]를 누르면 마지막으로 나눈 것을 되돌립니다.</li></ol></div>
+<div class="card"><div class="row"><button class="sec" id="mg">합치기(되돌리기)</button><button class="sec" id="rs">처음으로</button><button class="sec" id="q4">/26 네 개 만들기</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 120"></svg><table id="tb" style="margin-top:8px"></table></div>
+<div class="key"><b>핵심 3줄</b><br>• 프리픽스를 1 늘릴 때마다 서브넷 개수는 2배, 서브넷 하나의 크기는 절반이 됩니다(/24 → /25 두 개 → /26 네 개).<br>• 서브넷의 시작 주소는 언제나 자기 크기의 배수입니다. /26(64개)은 .0, .64, .128, .192에서 시작합니다.<br>• 조각마다 맨 앞(네트워크)과 맨 뒤(브로드캐스트)는 쓸 수 없으므로, 잘게 나눌수록 버려지는 주소 비율이 늘어납니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+let B=[[0,24]],hist=[];const COL=["#6b4fbb","#e69500","#2e8b57","#e6457a","#3a86ff","#00a3a3","#8d6e63","#b5179e"];
+function draw(){B.sort((a,b)=>a[0]-b[0]);let s="";B.forEach(([st,p],i)=>{const sz=Math.pow(2,32-p),x=10+st/256*780,w=sz/256*780;s+=`<g data-i="${i}" style="cursor:${p<30?"pointer":"default"}"><rect x="${x}" y="20" width="${w-2}" height="56" rx="4" fill="${COL[i%8]}"/>${w>36?`<text x="${x+w/2}" y="46" text-anchor="middle" fill="#fff" font-weight="700" font-size="${w>70?13:10}">.${st}/${p}</text><text x="${x+w/2}" y="64" text-anchor="middle" fill="#fff" font-size="${w>70?11:9}">${sz}개</text>`:""}</g>`});
+[0,64,128,192,256].forEach(v=>s+=`<text x="${10+v/256*780}" y="96" text-anchor="middle" font-size="11" fill="#666">.${v==256?"255":v}</text>`);sv.innerHTML=s;
+sv.querySelectorAll("g").forEach(g=>g.onclick=()=>{const[st,p]=B[+g.dataset.i];if(p>=30)return;hist.push(JSON.stringify(B));B.splice(+g.dataset.i,1,[st,p+1],[st+Math.pow(2,31-p),p+1]);draw()});
+let h="<tr><th></th><th>서브넷</th><th>마스크</th><th>사용 가능 범위</th><th>브로드캐스트</th><th>PC 수</th></tr>";B.forEach(([st,p],i)=>{const sz=Math.pow(2,32-p),m=(0xffffffff<<(32-p))>>>0;h+=`<tr><td><span style="display:inline-block;width:12px;height:12px;background:${COL[i%8]};border-radius:3px"></span></td><td class="mono">192.168.10.${st}/${p}</td><td class="mono">255.255.255.${m&255}</td><td class="mono">.${st+1} ~ .${st+sz-2}</td><td class="mono">.${st+sz-1}</td><td>${sz-2}</td></tr>`});
+const tot=B.reduce((a,[,p])=>a+Math.pow(2,32-p)-2,0);tb.innerHTML=h+`<tr><td></td><td colspan="5">조각 ${B.length}개, PC에 줄 수 있는 주소 합계 ${tot}개 (버려지는 주소 ${256-tot}개)</td></tr>`}
+mg.onclick=()=>{if(hist.length){B=JSON.parse(hist.pop());draw()}};rs.onclick=()=>{B=[[0,24]];hist=[];draw()};q4.onclick=()=>{hist.push(JSON.stringify(B));B=[[0,26],[64,26],[128,26],[192,26]];draw()};draw();
+</script></body></html>
