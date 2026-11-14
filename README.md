@@ -2,6 +2,10 @@
 
 책 「데이터 통신과 컴퓨터 네트워크」의 실습 자료 저장소입니다.
 
+▶ **시뮬레이터 바로 실행(전체 목록): https://yeonu69.github.io/DataNetwork4AI/sim/**
+
+아래 표의 링크를 누르면 설치 없이 브라우저에서 바로 실행됩니다. (GitHub에서 sim 폴더의 .html 파일을 누르면 코드만 보이니, 꼭 아래 github.io 링크로 여세요.)
+
 - `sim/` 장별 HTML 시뮬레이터 79개. 브라우저로 바로 열립니다. 온라인 주소: https://yeonu69.github.io/DataNetwork4AI/sim/
 - `captures/` 본문 Wireshark 그림에 쓴 캡처 파일(.pcapng). Wireshark로 열면 책과 같은 화면을 볼 수 있습니다.
 - `tools/wireshark_lab/` 캡처에 쓴 리눅스 가상 실습망(network namespace) 스크립트.
