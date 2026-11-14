@@ -1,0 +1,23 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2.4GHz와 5GHz | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">4장 시뮬레이터</div><h1>2.4GHz와 5GHz (그리고 6GHz)</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>공유기(AP)에서 노트북까지의 거리와 그 사이 벽의 개수를 정합니다.</li><li>세 주파수 대역의 신호 세기(RSSI, dBm)와 예상 속도가 막대로 나옵니다. -67 dBm보다 강하면 쾌적, -80 dBm보다 약하면 끊기기 쉽습니다.</li><li>거리 3 m, 벽 0개에서는 5·6GHz가 압도적으로 빠른 것을 확인합니다.</li><li>거리 25 m, 벽 3개로 바꿔 보세요. 이제는 2.4GHz만 살아남는 역전이 일어납니다.</li></ol></div>
+<div class="card"><table><tr><td>거리</td><td><input type="range" id="d" min="1" max="60" value="8"> <b id="dv"></b> m</td></tr><tr><td>벽(콘크리트·석고)</td><td><input type="range" id="w" min="0" max="5" value="1"> <b id="wv"></b>개</td></tr></table>
+<canvas id="cv" width="760" height="230" style="margin-top:8px"></canvas><table id="tb" style="margin-top:8px"></table></div>
+<div class="key"><b>핵심 3줄</b><br>• 주파수가 높을수록 같은 거리에서 신호가 더 약해지고, 벽을 지날 때도 더 많이 깎입니다.<br>• 대신 5GHz·6GHz는 채널 폭이 넓고 간섭이 적어 가까이에서는 훨씬 빠릅니다.<br>• 그래서 "가까우면 5·6GHz, 멀거나 벽이 많으면 2.4GHz"가 기본 감각이고, 요즘 공유기는 이를 자동으로 골라 줍니다(밴드 스티어링).</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const B=[["2.4GHz",2437,4,286,"#e69500","20 MHz"],["5GHz",5500,8,1201,"#6b4fbb","80 MHz"],["6GHz",6100,10,2402,"#2e8b57","160 MHz"]];
+const rssi=(f,dm,wl,wn)=>20-(20*Math.log10(Math.max(dm,0.5))+20*Math.log10(f)-27.55+wl*wn+6);
+const frac=r=>r>-50?1:r>-60?.75:r>-67?.5:r>-72?.3:r>-77?.15:r>-82?.05:0;
+const g=cv.getContext('2d');
+function run(){const D=+d.value,Wn=+w.value;dv.textContent=D;wv.textContent=Wn;const W=760,H=230,X=m=>50+m/60*(W-70),Y=r=>20+(-r-30)/65*(H-50);g.clearRect(0,0,W,H);g.font="11px sans-serif";
+[[-67,"쾌적 -67"],[-80,"끊김 -80"]].forEach(([r,t])=>{g.strokeStyle="#ccc";g.setLineDash([4,4]);g.beginPath();g.moveTo(50,Y(r));g.lineTo(W-20,Y(r));g.stroke();g.setLineDash([]);g.fillStyle="#999";g.fillText(t,W-70,Y(r)-3)});
+for(let r=-30;r>=-95;r-=10){g.fillStyle="#666";g.fillText(r,20,Y(r)+4)}for(let m=0;m<=60;m+=10)g.fillText(m+"m",X(m)-8,H-10);
+B.forEach(([n,f,wl,mx,c])=>{g.strokeStyle=c;g.lineWidth=3;g.beginPath();for(let m=1;m<=60;m+=0.5){const r=Math.max(-95,rssi(f,m,wl,Wn));m==1?g.moveTo(X(m),Y(r)):g.lineTo(X(m),Y(r))}g.stroke();g.lineWidth=1;g.fillStyle=c;const r=rssi(f,D,wl,Wn);g.beginPath();g.arc(X(D),Y(Math.max(-95,r)),6,0,7);g.fill();g.fillText(n,X(58)-30,Y(Math.max(-95,rssi(f,58,wl,Wn)))-6)});
+g.fillStyle="#333";g.fillText("dBm",14,12);
+let h="<tr><th>대역</th><th>채널 폭</th><th>신호 세기</th><th>예상 속도</th><th></th></tr>";let best=null;
+B.forEach(([n,f,wl,mx,c,cw])=>{const r=rssi(f,D,wl,Wn),s=mx*frac(r);if(!best||s>best[1])best=[n,s];h+=`<tr><td><b style="color:${c}">${n}</b></td><td>${cw}</td><td>${r.toFixed(0)} dBm</td><td>${s?s.toFixed(0)+" Mbps":"<span class='bad'>연결 끊김</span>"}</td><td style="width:40%"><span style="display:inline-block;height:14px;border-radius:4px;background:${c};width:${s/2402*100}%"></span></td></tr>`});
+tb.innerHTML=h+`<tr><td colspan="5">→ 이 자리에서는 <b>${best[1]?best[0]:"어느 대역도"}</b>${best[1]?"이(가) 가장 빠릅니다.":" 연결이 어렵습니다. AP를 하나 더 두세요(8장 로밍)."}</td></tr>`}
+d.oninput=w.oninput=run;run();
+</script></body></html>

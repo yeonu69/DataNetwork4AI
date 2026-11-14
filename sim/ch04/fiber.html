@@ -1,0 +1,32 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>광섬유 전반사 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">4장 시뮬레이터</div><h1>광섬유 전반사</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>빛을 쏘는 각도 슬라이더를 0°에서 천천히 올립니다. 빛이 코어와 클래딩 경계에서 튕기며(전반사) 앞으로 나아갑니다.</li><li>각도가 임계각을 넘는 순간 빛이 클래딩 밖으로 새어 나가는 것(빨간 선)을 확인합니다.</li><li>[멀티모드]에서는 여러 각도의 빛이 동시에 지나가 도착 시간이 달라지고, [싱글모드]에서는 거의 한 길로만 갑니다.</li><li>거리 슬라이더를 늘려 멀티모드의 펄스가 퍼지는 정도(모드 분산)를 보고, 왜 장거리에는 싱글모드를 쓰는지 생각해 봅니다.</li></ol></div>
+<div class="card"><div class="row"><button id="mm">멀티모드 (코어 50 µm)</button><button class="sec" id="sm">싱글모드 (코어 9 µm)</button></div>
+<div class="row"><label>빛의 각도 <input type="range" id="th" min="0" max="20" step="0.5" value="6"> <b id="thv"></b>°</label><span class="mut" id="crit"></span></div>
+<canvas id="cv" width="760" height="230"></canvas>
+<div class="row"><label>거리 <input type="range" id="L" min="0.1" max="10" step="0.1" value="0.5"> <b id="Lv"></b> km</label></div>
+<canvas id="pv" width="760" height="120"></canvas><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 광섬유는 굴절률이 큰 코어를 작은 클래딩이 감싸고 있어서, 얕은 각도로 들어온 빛은 경계에서 전부 반사(전반사)되어 갇힌 채 나아갑니다.<br>• 멀티모드는 코어가 넓어 여러 경로(모드)가 생기고, 경로마다 도착 시간이 달라 펄스가 퍼지므로 수백 m 안쪽(건물·데이터센터)에 씁니다.<br>• 싱글모드는 코어가 아주 가늘어 한 경로만 남으므로 펄스가 거의 퍼지지 않아 수십 km 이상 장거리에 씁니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const n1=1.48,n2=1.46,CR=90-Math.asin(n2/n1)*180/Math.PI;let multi=true;const g=cv.getContext('2d'),p=pv.getContext('2d');
+function ray(th,col,w){const W=760,top=multi?70:105,bot=multi?160:125,mid=(top+bot)/2;let x=40,y=mid,dy=Math.tan(th*Math.PI/180),dir=-1;
+g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.moveTo(x,y);let esc=false;
+for(let k=0;k<400&&x<W-20;k++){const ty=dir<0?top:bot,dx=Math.abs((ty-y)/dy||1e9),nx=Math.min(x+dx,W-20);const ny=y+dir*dy*(nx-x);g.lineTo(nx,ny);x=nx;y=ny;if(x>=W-20)break;
+if(th>CR){g.stroke();g.strokeStyle="#d9534f";g.beginPath();g.moveTo(x,y);g.lineTo(x+40,dir<0?10:220);g.stroke();esc=true;break}dir=-dir}
+if(!esc)g.stroke();g.lineWidth=1;return esc}
+function run(){const t=+th.value;thv.textContent=t;crit.textContent=`임계각(축 기준) ≈ ${CR.toFixed(1)}° 보다 작아야 갇힙니다`;const W=760;g.clearRect(0,0,W,230);
+const top=multi?70:105,bot=multi?160:125;g.fillStyle="#e3f2fd";g.fillRect(40,30,W-60,170);g.fillStyle="#fff8d6";g.fillRect(40,top,W-60,bot-top);
+g.fillStyle="#666";g.font="12px sans-serif";g.fillText("클래딩 (n=1.46)",50,48);g.fillText(`코어 (n=1.48, ${multi?"50":"9"} µm)`,50,top+14);g.fillText("클래딩",50,195);
+if(multi){[2,4.5,7.5].forEach(a=>{if(Math.abs(a-t)>0.6)ray(a,"rgba(107,79,187,.35)",1.5)})}
+const esc=ray(t,"#6b4fbb",3);
+g.fillStyle="#e6457a";g.beginPath();g.arc(36,(top+bot)/2,7,0,7);g.fill();g.fillStyle=esc?"#d9534f":"#2e8b57";g.font="bold 13px sans-serif";g.fillText(esc?"임계각 초과 → 빛이 새어 나감!":"전반사로 갇혀서 진행",W-260,222);pulse()}
+function pulse(){const km=+L.value;Lv.textContent=km;const W=760,H=120;p.clearRect(0,0,W,H);
+const dt=multi?km*1e3*n1/3e8*(n1/n2-1)*1e9*0.01:km*0.0017;/* ns: graded-index MM 근사(계단형의 1%), SM 색분산 근사 */
+const sig=0.15+dt;const G=(x,c,s)=>Math.exp(-((x-c)**2)/(2*s*s));
+p.font="12px sans-serif";p.fillStyle="#666";p.fillText("보낸 펄스 (1 Gbps, 비트 간격 1 ns)",20,14);p.fillText(`${km} km 뒤 받은 펄스`,410,14);
+[[20,0.15],[410,sig]].forEach(([x0,s],k)=>{p.strokeStyle=k?"#e6457a":"#6b4fbb";p.lineWidth=2;p.beginPath();for(let i=0;i<=340;i++){const t=i/340*5;let v=0;[1,2,4].forEach(c=>v+=G(t,c,s)/(k?Math.max(1,s/0.15)**0.5:1));const y=H-15-Math.min(v,1.2)*70;i?p.lineTo(x0+i,y):p.moveTo(x0+i,y)}p.stroke()});
+log.textContent=`${multi?"멀티모드(경사형)":"싱글모드"} ${km} km: 펄스 퍼짐 ≈ ${dt.toFixed(2)} ns\n`+(dt>0.5?"→ 옆 비트와 겹치기 시작합니다. 이 거리에서는 1 Gbps도 어렵습니다.":"→ 비트 간격(1 ns)보다 훨씬 작아 깨끗하게 구분됩니다.")}
+mm.onclick=()=>{multi=true;mm.className="";sm.className="sec";run()};sm.onclick=()=>{multi=false;sm.className="";mm.className="sec";run()};th.oninput=run;L.oninput=pulse;run();
+</script></body></html>

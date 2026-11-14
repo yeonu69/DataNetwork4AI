@@ -1,0 +1,22 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2.4GHz 채널 겹침 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">4장 시뮬레이터</div><h1>2.4GHz 채널 겹침</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>2.4GHz에는 1~13번 채널이 5 MHz 간격으로 있지만, 채널 하나는 약 22 MHz 폭을 차지합니다. 그래프의 산 모양이 한 채널입니다.</li><li>옆집 공유기 3대의 채널과 우리 집 공유기 채널을 고릅니다.</li><li>산이 '살짝 겹치면' 서로에게 잡음이 되어 가장 나쁘고, '완전히 같으면' 차례를 지켜 나눠 쓰므로 그나마 낫습니다.</li><li>[1·6·11로 정리]를 눌러 서로 겹치지 않는 배치가 왜 정답인지 확인합니다.</li></ol></div>
+<div class="card"><div class="row" id="sel"></div><div class="row"><button id="fix">1·6·11로 정리</button><button class="sec" id="rnd">무작위 배치</button></div>
+<canvas id="cv" width="760" height="240"></canvas><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 2.4GHz 채널은 폭(22 MHz)이 간격(5 MHz)보다 넓어서 이웃 채널끼리 겹칩니다. 서로 안 겹치는 조합은 1, 6, 11번뿐입니다.<br>• 부분적으로 겹친 채널은 서로 알아듣지 못하는 잡음이 되어 오류와 재전송을 늘립니다. 같은 채널끼리는 CSMA/CA로 차례를 지켜 나눠 씁니다.<br>• 5GHz는 겹치지 않는 채널이 훨씬 많아서 아파트처럼 공유기가 많은 곳에서 유리합니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const AP=[["우리 집",3,"#6b4fbb"],["옆집 A",1,"#e69500"],["옆집 B",4,"#2e8b57"],["윗집 C",9,"#e6457a"]];const g=cv.getContext('2d');
+sel.innerHTML=AP.map((a,i)=>`<label style="color:${a[2]};font-weight:700">${a[0]} <select data-i="${i}">${Array.from({length:13},(_,k)=>`<option ${k+1==a[1]?"selected":""}>${k+1}</option>`).join("")}</select></label>`).join("");
+sel.querySelectorAll("select").forEach(s=>s.onchange=()=>{AP[+s.dataset.i][1]=+s.value;run()});
+const cf=c=>2412+5*(c-1);
+function run(){sel.querySelectorAll("select").forEach((s,i)=>s.value=AP[i][1]);const W=760,H=240,X=f=>30+(f-2397)/(2487-2397)*(W-50),base=H-40;g.clearRect(0,0,W,H);g.font="11px sans-serif";
+for(let c=1;c<=13;c++){g.fillStyle=[1,6,11].includes(c)?"#6b4fbb":"#999";g.fillText(c,X(cf(c))-4,H-22)}g.fillStyle="#666";g.fillText("채널 번호",4,H-22);g.fillText("2.4 GHz 대역 →",W-100,H-6);
+AP.forEach(([n,c,col],i)=>{const f=cf(c);g.fillStyle=col+"33";g.strokeStyle=col;g.lineWidth=i?2:3.5;g.beginPath();g.moveTo(X(f-11),base);for(let k=-11;k<=11;k+=0.5){const y=base-(i?110:150)*Math.cos(k/11*Math.PI/2)**2;g.lineTo(X(f+k),y)}g.lineTo(X(f+11),base);g.fill();g.stroke();g.fillStyle=col;g.font="bold 12px sans-serif";g.fillText(n,X(f)-20,base-(i?115:155)-4);g.font="11px sans-serif"});g.lineWidth=1;
+const me=AP[0][1];let co=[],adj=[];AP.slice(1).forEach(([n,c])=>{const d=Math.abs(c-me);if(d==0)co.push(n);else if(d<5)adj.push(`${n}(${d}칸 차이)`)});
+const score=Math.max(0,100-co.length*25-adj.length*35);
+log.textContent=`우리 집 채널 ${me}번\n같은 채널(차례 지켜 나눠 씀): ${co.join(", ")||"없음"}\n부분 겹침(잡음으로 작용, 가장 나쁨): ${adj.join(", ")||"없음"}\n→ 깨끗함 점수 ${score}/100`+(score==100?"  완벽합니다!":adj.length?"  겹치는 이웃과 5칸 이상 떨어뜨려 보세요.":"")}
+fix.onclick=()=>{[6,1,6,11].forEach((c,i)=>AP[i][1]=c);AP[0][1]=11;AP[3][1]=11;AP[1][1]=1;AP[2][1]=6;run()};
+rnd.onclick=()=>{AP.forEach(a=>a[1]=1+Math.floor(Math.random()*13));run()};run();
+</script></body></html>
