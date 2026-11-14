@@ -4,15 +4,15 @@
 <div class="card how"><b>이렇게 해 보세요</b><ol><li>[출발]을 누르면 휴대폰을 든 자동차가 기지국 A, B, C 옆을 지나갑니다. 위쪽 그래프는 각 기지국의 신호 세기입니다.</li><li>휴대폰은 지금 기지국보다 옆 기지국이 '여유값(히스테리시스)'만큼 더 세지면 기지국을 바꿉니다(핸드오버, 주황 세로선).</li><li>여유값을 0 dB로 내려 보세요. 경계에서 신호가 출렁일 때마다 A↔B를 오가는 핑퐁이 생깁니다.</li><li>여유값을 너무 크게(10 dB) 하면 핸드오버가 늦어져 신호가 약한 구간을 오래 버티게 되는 것도 비교합니다.</li></ol></div>
 <div class="card"><div class="row"><label>여유값(히스테리시스) <input type="range" id="hy" min="0" max="10" value="3"> <b id="hyv"></b> dB</label><label>신호 출렁임 <input type="range" id="fd" min="0" max="8" value="4"> <b id="fdv"></b> dB</label><button id="go">출발</button></div>
 <canvas id="cv" width="760" height="330"></canvas>
-<div class="row"><span class="pill">핸드오버 횟수</span><span class="big" id="hc">0</span>&nbsp;<span class="pill">핑퐁</span><b id="pp" class="bad">0</b>&nbsp;<span class="pill">약한 신호(-100 dBm 미만) 구간</span><b id="wk">0%</b></div><div class="log" id="log"></div></div>
+<div class="row"><span class="pill">핸드오버 횟수</span><span class="big" id="hc">0</span>&nbsp;<span class="pill">핑퐁</span><b id="pp" class="bad">0</b>&nbsp;<span class="pill">약한 신호(-95 dBm 미만) 구간</span><b id="wk">0%</b></div><div class="log" id="log"></div></div>
 <div class="key"><b>핵심 3줄</b><br>• 핸드오버는 이동 중인 단말이 연결을 끊지 않고 더 좋은 기지국으로 옮겨 가는 절차입니다. 단말이 신호를 재서 보고하고, 망이 결정합니다.<br>• 경계에서는 신호가 출렁이므로 "조금 더 세면 바로 옮기기"는 A↔B 핑퐁을 일으킵니다. 그래서 여유값과 대기 시간을 둡니다.<br>• 여유값이 너무 크면 약한 신호를 오래 붙잡아 끊길 위험이 커집니다. 적당한 값 찾기가 이동통신망 튜닝의 핵심입니다.</div>
 </main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
 <script>
 const g=cv.getContext('2d'),BS=[[120,"A","#6b4fbb"],[380,"B","#e69500"],[640,"C","#2e8b57"]],W=760;let anim=null,seed=3;
 function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647-0.5}
-function sim(){seed=7;const F=+fd.value,H=+hy.value;const fad=BS.map(()=>[]);for(let x=0;x<=W;x+=4)BS.forEach((b,i)=>{const prev=fad[i].length?fad[i][fad[i].length-1]:0;fad[i].push(prev*0.7+rnd()*F*0.9)});
-const rs=(i,x)=>-40-35*Math.log10(Math.max(20,Math.abs(x-BS[i][0]))/20)+fad[i][Math.round(x/4)];let srv=0,ev=[],weak=0,n=0;const servs=[];
-for(let x=0;x<=W;x+=4){n++;let best=srv;BS.forEach((b,i)=>{if(i!=srv&&rs(i,x)>rs(srv,x)+H&&rs(i,x)>rs(best,x))best=i});if(best!=srv){ev.push([x,srv,best]);srv=best}servs.push(srv);if(rs(srv,x)<-100)weak++}
+function sim(){seed=7;const F=+fd.value,H=+hy.value;const fad=BS.map(()=>[]);for(let x=0;x<=W;x+=4)BS.forEach((b,i)=>{const prev=fad[i].length?fad[i][fad[i].length-1]:0;fad[i].push(prev*0.8+rnd()*F*2.6)});
+const rs=(i,x)=>-45-55*Math.log10(Math.max(20,Math.abs(x-BS[i][0]))/20)+fad[i][Math.round(x/4)];let srv=0,ev=[],weak=0,n=0;const servs=[];
+for(let x=0;x<=W;x+=4){n++;let best=srv;BS.forEach((b,i)=>{if(i!=srv&&rs(i,x)>rs(srv,x)+H&&rs(i,x)>rs(best,x))best=i});if(best!=srv){ev.push([x,srv,best]);srv=best}servs.push(srv);if(rs(srv,x)<-95)weak++}
 let ping=0;for(let i=1;i<ev.length;i++)if(ev[i][2]==ev[i-1][1]&&ev[i][0]-ev[i-1][0]<120)ping++;return{rs,ev,weak:weak/n,servs,ping}}
 function draw(R,upto){const Y=v=>20+(-v-40)/75*200;g.clearRect(0,0,W,330);g.font="11px sans-serif";
 [-50,-75,-100].forEach(v=>{g.strokeStyle="#eee";g.beginPath();g.moveTo(0,Y(v));g.lineTo(W,Y(v));g.stroke();g.fillStyle="#999";g.fillText(v+" dBm",2,Y(v)-2)});
