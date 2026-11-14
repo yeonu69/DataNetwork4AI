@@ -1,0 +1,34 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>비차단 설계 계산기 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">15장 시뮬레이터</div><h1>비차단 설계 계산기: 리프-스파인의 오버서브스크립션</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>리프 스위치 하나에 붙는 서버 수와 서버당 속도(아래쪽), 리프에서 스파인으로 올라가는 링크 수와 속도(위쪽)를 정합니다.</li><li>오버서브스크립션 = 아래쪽 합계 ÷ 위쪽 합계입니다. 3:1이면 모든 서버가 동시에 다른 랙과 통신할 때 각자 1/3 속도밖에 못 씁니다.</li><li>[일반 웹 데이터센터]와 [AI 학습 클러스터] 버튼으로 두 설계를 비교하고, 아래 막대에서 AllReduce 한 번에 걸리는 시간이 어떻게 달라지는지 봅니다.</li><li>위쪽 링크를 늘려 1:1(비차단)을 만들면 스위치 포트와 광모듈이 얼마나 더 필요한지 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><button class="sec" id="pw">일반 웹 데이터센터</button><button class="sec" id="pa">AI 학습 클러스터</button></div>
+<div class="row"><label>리프당 서버 <input type="number" id="ns" value="32" min="1" max="64" style="width:70px"></label><label>서버당 속도 <select id="ss"><option value="25">25G</option><option value="100">100G</option><option value="400" selected>400G</option><option value="800">800G</option></select></label>
+<label>리프 → 스파인 링크 <input type="number" id="nu" value="8" min="1" max="64" style="width:70px">개</label><label>링크 속도 <select id="us"><option value="100">100G</option><option value="400" selected>400G</option><option value="800">800G</option></select></label><label>리프 수 <input type="number" id="nl" value="4" min="2" max="8" style="width:60px"></label></div>
+<svg class="stage" id="sv" viewBox="0 0 800 300"></svg>
+<div class="grid2" style="margin-top:8px"><div id="out"></div><svg class="stage" id="bar" viewBox="0 0 400 200"></svg></div>
+<div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 오버서브스크립션은 '아래로 받을 수 있는 양 ÷ 위로 내보낼 수 있는 양'입니다. 웹 서비스는 모두가 동시에 최대로 쓰지 않으니 3:1 정도로 아낍니다.<br>• AI 학습은 모든 GPU가 같은 순간에 최대 속도로 주고받습니다. 이때 3:1이면 통신이 3배 느려지고, 그동안 비싼 GPU가 놉니다.<br>• 그래서 AI 클러스터는 1:1 비차단(non-blocking)으로 설계합니다. 스위치와 광모듈이 더 들지만 GPU 시간을 아끼는 쪽이 훨씬 쌉니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+function calc(){const n=Math.max(1,+ns.value),s=+ss.value,u=Math.max(1,+nu.value),us_=+us.value,L=Math.max(2,Math.min(8,+nl.value));
+const down=n*s,up=u*us_,r=down/up;const spines=Math.min(u,8);
+let g="";const sx=i=>800/(spines+1)*(i+1),lx=i=>800/(L+1)*(i+1);
+for(let i=0;i<L;i++)for(let j=0;j<spines;j++){const w=Math.max(1,Math.min(10,us_/100*u/spines));g+=`<line x1="${lx(i)}" y1="120" x2="${sx(j)}" y2="50" stroke="${r>1.01?"#e69500":"#2e8b57"}" stroke-width="${w*.7}" opacity=".55"/>`}
+for(let j=0;j<spines;j++)g+=`<rect x="${sx(j)-36}" y="26" width="72" height="26" rx="6" fill="#6b4fbb"/><text x="${sx(j)}" y="44" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">스파인 ${j+1}</text>`;
+for(let i=0;i<L;i++){g+=`<rect x="${lx(i)-45}" y="118" width="90" height="28" rx="6" fill="#9b86d9"/><text x="${lx(i)}" y="137" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">리프 ${i+1}</text>`;
+const k=Math.min(n,8);for(let m=0;m<k;m++){const x=lx(i)-40+m*(80/Math.max(1,k-1||1));g+=`<line x1="${lx(i)}" y1="146" x2="${x}" y2="200" stroke="#3a86ff" stroke-width="${Math.min(6,s/100+1)}" opacity=".6"/><rect x="${x-6}" y="200" width="12" height="18" rx="2" fill="#3a86ff"/>`}
+g+=`<text x="${lx(i)}" y="236" text-anchor="middle" font-size="11" fill="#666">서버 ${n}대${n>8?" (8대만 그림)":""}</text>`}
+g+=`<text x="10" y="90" font-size="12" fill="${r>1.01?"#e69500":"#2e8b57"}" font-weight="700">위로: ${u}×${us_}G = ${(up/1000).toFixed(1)}Tb/s</text><text x="10" y="275" font-size="12" fill="#3a86ff" font-weight="700">아래로: ${n}×${s}G = ${(down/1000).toFixed(1)}Tb/s</text>`;
+g+=`<text x="790" y="275" text-anchor="end" font-size="20" font-weight="700" fill="${r>1.01?"#d9534f":"#2e8b57"}">${r>1.01?r.toFixed(1)+" : 1":r<.99?"1 : "+(1/r).toFixed(1)+" (여유)":"1 : 1 비차단"}</text>`;sv.innerHTML=g;
+const ports=n+u,optics=L*u*2;const per=Math.min(1,1/r);
+out.innerHTML=`<table><tr><th>오버서브스크립션</th><td><b class="${r>1.01?"bad":"ok"}">${r.toFixed(2)} : 1</b></td></tr><tr><th>모두 동시에 다른 랙과 통신할 때<br>서버 한 대가 쓰는 속도</th><td><b>${(s*per).toFixed(0)}G</b> / ${s}G (${Math.round(per*100)}%)</td></tr><tr><th>리프 하나에 필요한 포트</th><td>${ports}개 (아래 ${n} + 위 ${u})</td></tr><tr><th>리프-스파인 광모듈</th><td>${optics}개 (링크 양 끝)</td></tr></table>`;
+const T0=1.0,comp=1.0,tc=T0/per;const B=[["계산",comp,"#9b86d9"],["통신(AllReduce)",tc,r>1.01?"#d9534f":"#2e8b57"]];let b=`<text x="10" y="18" font-size="12" font-weight="700">학습 한 단계 시간 (1:1일 때 통신 1초 기준)</text>`;
+let x=10;const sc=360/(comp+Math.max(tc,1)*1.05+0.0001);B.forEach(([nm,v,c])=>{b+=`<rect x="${x}" y="40" width="${v*sc}" height="40" fill="${c}"/><text x="${x+4}" y="65" font-size="11" fill="#fff" font-weight="700">${nm} ${v.toFixed(1)}초</text>`;x+=v*sc});
+const util=comp/(comp+tc);b+=`<text x="10" y="110" font-size="13">GPU가 실제로 계산하는 비율: <tspan font-weight="700" fill="${util<.45?"#d9534f":"#2e8b57"}">${Math.round(util*100)}%</tspan></text><text x="10" y="135" font-size="12" fill="#666">(통신과 계산을 겹치지 않는 단순한 경우)</text>`;
+b+=`<text x="10" y="165" font-size="12" fill="#666">GPU 1000대 × 시간당 3달러로 치면, 한 달에 놀고 있는 돈:</text><text x="10" y="186" font-size="14" font-weight="700" fill="${util<.45?"#d9534f":"#333"}">약 ${Math.round(1000*3*24*30*(1-util)/10000).toLocaleString()}만 달러</text>`;bar.innerHTML=b;
+log.textContent=r>1.01?`아래쪽 ${(down/1000).toFixed(1)}Tb/s를 위쪽 ${(up/1000).toFixed(1)}Tb/s로 내보내야 해서 ${r.toFixed(1)}배 막힙니다. 위 링크를 ${Math.ceil(down/us_)}개로 늘리면 1:1이 됩니다.`:`위쪽이 아래쪽 이상이라 모든 서버가 동시에 최대 속도로 다른 랙과 통신해도 막히지 않습니다(비차단).`}
+pw.onclick=()=>{ns.value=48;ss.value=25;nu.value=4;us.value=100;calc();log.textContent+="\n웹 서버는 요청이 들쭉날쭉해 모두가 동시에 꽉 채우는 일이 드뭅니다. 그래서 3:1로 비용을 아낍니다."};
+pa.onclick=()=>{ns.value=16;ss.value=400;nu.value=16;us.value=400;calc();log.textContent+="\nAI 클러스터: 서버(GPU) 한 대마다 400G를 받는 만큼 위로도 400G를 내보낼 길을 깝니다."};
+[ns,ss,nu,us,nl].forEach(e=>e.oninput=e.onchange=calc);calc();
+</script></body></html>

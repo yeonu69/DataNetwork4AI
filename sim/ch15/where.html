@@ -1,0 +1,32 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI는 어디서 실행될까 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">15장 시뮬레이터</div><h1>AI는 어디서 실행될까: 클라우드 · 엣지 · 온디바이스</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>위의 예시 서비스 하나를 고르면 조건(필요한 응답 시간, 모델 크기, 보내야 할 데이터, 개인정보 민감도)이 채워집니다. 직접 바꿔도 됩니다.</li><li>세 곳(내 기기, 가까운 엣지 서버, 먼 클라우드)에서 실행할 때의 응답 시간이 '네트워크 왕복 + 데이터 올리기 + 계산'으로 나뉘어 막대로 나옵니다.</li><li>빨간 선(필요한 응답 시간)을 넘는 곳, 모델이 안 들어가는 곳, 개인정보가 밖으로 나가는 곳에는 경고가 붙습니다.</li><li>[네트워크 끊김]을 켜면 어디가 살아남는지 봅니다.</li></ol></div>
+<div class="card"><div class="row" id="pre"></div>
+<div class="row"><label>필요한 응답 시간 <select id="dl"><option value="10">10ms</option><option value="50">50ms</option><option value="200">200ms</option><option value="1000">1초</option><option value="5000">5초</option></select></label><label>모델 크기 <select id="ms"><option value="0.01">아주 작음 (1천만 파라미터)</option><option value="1">작음 (10억)</option><option value="8">중간 (80억)</option><option value="70">큼 (700억)</option><option value="1000">초거대 (1조)</option></select></label>
+<label>한 번에 보낼 데이터 <select id="dz"><option value="0.001">글자 (1KB)</option><option value="0.3">사진 한 장 (300KB)</option><option value="3">영상 1초 (3MB)</option></select></label><label>개인정보 <select id="pv"><option value="0">민감하지 않음</option><option value="1">민감함</option></select></label><label><input type="checkbox" id="off"> 네트워크 끊김</label></div>
+<svg class="stage" id="sv" viewBox="0 0 800 300"></svg>
+<div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 클라우드는 가장 큰 모델과 많은 GPU를 쓸 수 있지만, 먼 거리 왕복과 데이터 올리기 시간이 더해지고 네트워크가 끊기면 멈춥니다.<br>• 엣지(기지국·공장·매장 근처 서버)는 왕복이 짧아 빠른 판단에 좋고, 데이터를 멀리 보내지 않아도 됩니다. 온디바이스는 네트워크 없이 가장 빠르고 개인정보가 기기 밖으로 나가지 않지만 작은 모델만 돌아갑니다.<br>• 그래서 실제 서비스는 섞어 씁니다. 급하고 작은 판단은 기기·엣지에서, 크고 어려운 일은 클라우드에서 합니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const PRE=[["자율주행 긴급 제동","10","1","3","0"],["공장 카메라 불량 검사","50","0.01","0.3","0"],["스마트폰 사진 보정","200","1","0.3","1"],["음성 비서 \"불 꺼 줘\"","200","1","0.001","1"],["대형 챗봇 답변","5000","1000","0.001","0"],["병원 의료 영상 판독","5000","70","3","1"]];
+pre.innerHTML=PRE.map((p,i)=>`<button class="sec" data-p="${i}">${p[0]}</button>`).join("");
+// 장소: [이름, 왕복ms, 올리기 Mbps, 최대 모델(십억), 계산 속도(십억 파라미터당 ms), 색]
+const PL=[["온디바이스 (내 기기)",0,Infinity,3,6,"#2e8b57"],["엣지 (가까운 서버)",8,500,80,0.6,"#3a86ff"],["클라우드 (먼 데이터센터)",60,50,2000,0.25,"#6b4fbb"]];
+function draw(){const D=+dl.value,M=+ms.value,Z=+dz.value,P=+pv.value,O=off.checked;const R=PL.map(([n,rtt,up,mx,sp,c],i)=>{const fit=M<=mx,net=i?rtt:0,upl=i?Z*8/up*1000:0,comp=Math.max(1,M*sp*(i==0?1:1))+(i==2?20:0);
+return{n,c,fit,net,upl,comp,tot:net+upl+comp,dead:O&&i>0,leak:P&&i>0}});
+const mxT=Math.max(D*1.3,...R.filter(r=>r.fit).map(r=>r.tot))*1.05,X=v=>200+Math.min(v,mxT)/mxT*560;let s="";
+R.forEach((r,i)=>{const y=30+i*80;s+=`<text x="10" y="${y+22}" font-weight="700" fill="${r.c}" font-size="13">${r.n}</text>`;
+if(!r.fit){s+=`<rect x="200" y="${y}" width="560" height="34" fill="#f2f2f2"/><text x="210" y="${y+22}" fill="#999" font-size="12">모델이 너무 커서 들어가지 않음 (최대 약 ${PL[i][3]>=1000?(PL[i][3]/1000)+"조":PL[i][3]*10+"억"} 파라미터)</text>`;return}
+if(r.dead){s+=`<rect x="200" y="${y}" width="560" height="34" fill="#ffe3e3"/><text x="210" y="${y+22}" fill="#d9534f" font-size="12" font-weight="700">네트워크 끊김 → 사용할 수 없음</text>`;return}
+let x=200;[["왕복",r.net,"#bbb"],["데이터 올리기",r.upl,"#e69500"],["계산",r.comp,r.c]].forEach(([n,v,c])=>{const w=X(x-200+v)-X(x-200);if(v>0){s+=`<rect x="${x}" y="${y}" width="${Math.max(1,Math.min(w,760-x))}" height="34" fill="${c}"/>`;if(w>58)s+=`<text x="${x+4}" y="${y+21}" fill="#fff" font-size="11" font-weight="700">${n} ${v<1?v.toFixed(1):Math.round(v)}ms</text>`}x+=w});
+const ok=r.tot<=D;s+=`<text x="200" y="${y+52}" font-size="12" fill="${ok?"#2e8b57":"#d9534f"}" font-weight="700">합계 ${r.tot<10?r.tot.toFixed(1):Math.round(r.tot)}ms ${ok?"✔ 시간 안에 됨":"✘ 너무 느림"}</text>`+(r.leak?`<text x="420" y="${y+52}" font-size="12" fill="#e69500">⚠️ 개인정보가 기기 밖으로 나감</text>`:"")});
+const dx=X(D);s+=`<line x1="${dx}" y1="20" x2="${dx}" y2="250" stroke="#d9534f" stroke-width="2" stroke-dasharray="6 4"/><text x="${Math.min(dx,700)}" y="270" text-anchor="middle" fill="#d9534f" font-size="12" font-weight="700">필요한 응답 시간 ${D>=1000?D/1000+"초":D+"ms"}</text>`;sv.innerHTML=s;
+const good=R.filter(r=>r.fit&&!r.dead&&r.tot<=D);const best=good.find(r=>!r.leak)||good[0];
+log.textContent=best?`추천: ${best.n}. `+(best===R[0]?"네트워크를 거치지 않아 가장 빠르고 개인정보도 기기 안에 남습니다.":best===R[1]?"왕복이 짧아 빠르면서도 기기보다 큰 모델을 돌릴 수 있습니다.":"모델이 커서 클라우드의 GPU가 필요합니다. 응답 시간이 넉넉한 일입니다.")+(good.length>1?` (가능한 곳: ${good.map(r=>r.n.split(" ")[0]).join(", ")})`:""):
+"세 곳 모두 조건을 만족하지 못합니다. 모델을 줄이거나(경량화·양자화), 일을 나눠 급한 부분은 기기에서, 큰 부분은 클라우드에서 하는 방법(하이브리드)을 생각해 보세요.";
+if(R[2].fit&&!O&&R[2].upl>R[2].comp)log.textContent+=`\n클라우드는 계산보다 데이터 올리기(${Math.round(R[2].upl)}ms)가 더 오래 걸립니다. 영상은 현장(엣지)에서 처리하고 결과만 보내는 이유입니다.`}
+document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{const p=PRE[+b.dataset.p];dl.value=p[1];ms.value=p[2];dz.value=p[3];pv.value=p[4];document.querySelectorAll("[data-p]").forEach(x=>x.classList.toggle("sec",x!==b));draw()});
+[dl,ms,dz,pv,off].forEach(e=>e.onchange=draw);document.querySelector("[data-p]").click();
+</script></body></html>

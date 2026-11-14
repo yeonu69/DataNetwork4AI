@@ -1,0 +1,33 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>레일 최적화 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">15장 시뮬레이터</div><h1>레일 최적화: 같은 번호 GPU끼리 같은 길로</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>GPU 서버 4대에 GPU가 4개씩 있고, GPU마다 네트워크 카드(NIC)가 하나씩 달려 있습니다. 대규모 학습에서는 서버마다 '같은 번호' GPU끼리(0번은 0번끼리) 자주 통신합니다.</li><li>'서버별 연결'은 한 서버의 NIC 4개를 같은 리프에 꽂습니다. [통신 시작]을 누르면 같은 번호 GPU끼리의 통신이 모두 스파인을 거쳐야 합니다.</li><li>'레일 연결'로 바꾸면 0번 GPU는 모두 리프 0(레일 0)에, 1번은 리프 1에 꽂힙니다. 같은 번호끼리의 통신이 리프 하나에서 끝나는지 봅니다.</li><li>아래 표에서 거치는 스위치 수와 스파인을 지나는 트래픽 양을 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><label>연결 방식 <select id="md"><option value="srv">서버별 연결 (기존)</option><option value="rail">레일 연결 (레일 최적화)</option></select></label><label>통신 <select id="tr"><option value="same">같은 번호 GPU끼리 (서버 사이)</option><option value="in">한 서버 안 GPU끼리</option></select></label><button id="go">통신 시작</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 420"></svg>
+<table id="tb" style="margin-top:8px"></table><div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 레일(rail)은 '모든 서버의 k번 GPU를 모은 줄'입니다. 레일 최적화는 k번 GPU의 NIC를 모두 같은 리프 스위치(레일 k)에 연결하는 설계입니다.<br>• 대규모 학습의 서버 간 통신은 대부분 같은 번호 GPU끼리 일어나므로, 이 트래픽이 리프 하나에서 끝나 스파인을 거의 쓰지 않습니다. 홉이 줄고 충돌도 줄어듭니다.<br>• 한 서버 안 GPU끼리는 NVLink 같은 서버 내부 고속 연결로 주고받아 네트워크를 쓰지 않습니다. 두 길을 나눠 쓰는 것이 핵심입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const S=4,G=4,C=["#6b4fbb","#e69500","#2e8b57","#3a86ff"];let anim=null,flows=[],t0=0;
+const SP=[[250,40],[550,40]],LF=[0,1,2,3].map(i=>[110+i*193,150]);
+const gpu=(s,g)=>[40+s*193+g*38,330];
+function leafOf(s,g){return md.value=="rail"?g:s}
+function path(a,b){const[s1,g1]=a,[s2,g2]=b;if(s1==s2)return{pts:[gpu(...a),[gpu(...a)[0]+((g2-g1)*38)/2,375],gpu(...b)],hops:0,spine:false,nv:true};
+const l1=leafOf(s1,g1),l2=leafOf(s2,g2),A=gpu(...a),B=gpu(...b);if(l1==l2)return{pts:[A,LF[l1],B],hops:1,spine:false};const sp=SP[(s1+s2+g1)%2];return{pts:[A,LF[l1],sp,LF[l2],B],hops:3,spine:true}}
+function base(){let s="";SP.forEach(([x,y],i)=>s+=`<rect x="${x-50}" y="${y-16}" width="100" height="32" rx="7" fill="#444"/><text x="${x}" y="${y+5}" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">스파인 ${i+1}</text>`);
+LF.forEach(([x,y])=>SP.forEach(([a,b])=>s+=`<line x1="${x}" y1="${y-14}" x2="${a}" y2="${b+16}" stroke="#ccc" stroke-width="2"/>`));
+LF.forEach(([x,y],i)=>s+=`<rect x="${x-58}" y="${y-14}" width="116" height="28" rx="6" fill="${md.value=="rail"?C[i]:"#9b86d9"}"/><text x="${x}" y="${y+5}" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">${md.value=="rail"?`리프 ${i} = 레일 ${i}`:`리프 ${i} (서버 ${i}용)`}</text>`);
+for(let sv_=0;sv_<S;sv_++){s+=`<rect x="${40+sv_*193-22}" y="300" width="${G*38+6}" height="92" rx="8" fill="#fbfaff" stroke="#999"/><text x="${40+sv_*193-14}" y="406" font-size="11" fill="#666">서버 ${sv_} (NVLink로 내부 연결)</text>`;
+for(let g=0;g<G;g++){const[x,y]=gpu(sv_,g),l=leafOf(sv_,g);s+=`<line x1="${x}" y1="${y-12}" x2="${LF[l][0]}" y2="${LF[l][1]+14}" stroke="${C[g]}" stroke-width="1.5" opacity=".45"/><rect x="${x-14}" y="${y-12}" width="28" height="26" rx="4" fill="${C[g]}"/><text x="${x}" y="${y+5}" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">G${g}</text>`}}
+return s}
+function draw(u){let s=base();flows.forEach(f=>{const P=f.p.pts;s+=`<polyline points="${P.map(p=>p.join(",")).join(" ")}" fill="none" stroke="${C[f.g]}" stroke-width="3" opacity="${u==null?0:.8}"/>`;
+if(u!=null){const segs=P.length-1,k=Math.min(segs-1,Math.floor(u*segs)),v=u*segs-k,a=P[k],b=P[k+1];s+=`<circle cx="${a[0]+(b[0]-a[0])*v}" cy="${a[1]+(b[1]-a[1])*v}" r="6" fill="${C[f.g]}" stroke="#fff" stroke-width="2"/>`}});sv.innerHTML=s}
+function make(){flows=[];if(tr.value=="same"){for(let g=0;g<G;g++)for(let s=0;s<S;s++){const b=[(s+1)%S,g];flows.push({g,p:path([s,g],b)})}}else{for(let s=0;s<S;s++)for(let g=0;g<G;g++)flows.push({g,p:path([s,g],[s,(g+1)%G])})}}
+function stats(){const n=flows.length,hop=flows.reduce((a,f)=>a+f.p.hops,0)/n,sp=flows.filter(f=>f.p.spine).length,nv=flows.filter(f=>f.p.nv).length;
+tb.innerHTML=`<tr><th>연결 방식</th><th>흐름 수</th><th>평균 거치는 스위치</th><th>스파인을 지나는 흐름</th><th>NVLink로 끝난 흐름</th></tr><tr><td>${md.selectedOptions[0].text}</td><td>${n}</td><td><b>${hop.toFixed(1)}개</b></td><td><b class="${sp?"bad":"ok"}">${sp}개 (${Math.round(sp/n*100)}%)</b></td><td>${nv}개</td></tr>`;
+log.textContent=tr.value=="in"?"한 서버 안 GPU끼리는 NVLink(서버 안의 고속 연결, 수백 GB/s~TB/s)로 주고받아 네트워크 스위치를 전혀 거치지 않습니다. 연결 방식과 상관없습니다.":
+md.value=="rail"?`레일 연결: 같은 번호 GPU는 모두 같은 리프에 있어 스위치 1개만 거칩니다. 스파인을 지나는 흐름 ${sp}개. 스파인은 다른 번호끼리 통신하는 드문 경우를 위해 남겨 둡니다.`:
+`서버별 연결: 같은 번호 GPU라도 서버가 다르면 리프가 달라 리프 → 스파인 → 리프, 스위치 3개를 거칩니다. ${n}개 흐름이 스파인 2대에 몰려 서로 부딪힐 수 있습니다(지연·혼잡 증가).`}
+function run(){make();cancelAnimationFrame(anim);t0=performance.now();const f=n=>{const u=Math.max(0,(n-t0)/1600)%1;draw(u);anim=requestAnimationFrame(f)};anim=requestAnimationFrame(f);stats()}
+go.onclick=run;md.onchange=tr.onchange=()=>{make();if(anim){run()}else{draw(null);stats()}};make();draw(null);stats();
+</script></body></html>

@@ -1,0 +1,35 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>장애는 일상이다 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">15장 시뮬레이터</div><h1>장애는 일상이다: GPU 수, 고장, 체크포인트</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>GPU(와 그 NIC·케이블·스위치 포트)는 한 대만 보면 몇 년에 한 번 고장 납니다. 그런데 수천 대를 묶으면 어떨까요? GPU 수를 고르고 [30일 학습 돌려 보기]를 누릅니다.</li><li>막대에서 빨간 줄이 고장, 초록 눈금이 체크포인트(중간 저장)입니다. 고장이 나면 마지막 체크포인트로 돌아가 다시 시작하므로, 그 사이 계산(주황)은 버려집니다.</li><li>체크포인트 간격을 바꿔 보세요. 너무 자주 하면 저장하느라 시간이 들고, 너무 드물면 고장 때 버리는 양이 커집니다.</li><li>[최적 간격 추천]을 누르면 '√(2 × 저장 시간 × 고장 간격)' 공식이 알려 주는 간격으로 맞춥니다.</li></ol></div>
+<div class="card"><div class="row"><label>GPU 수 <select id="ng"><option>8</option><option>512</option><option selected>4096</option><option>16384</option><option>100000</option></select></label><label>GPU 1대(관련 부품 포함) 평균 고장 간격 <select id="mt"><option value="26280">3년</option><option value="43800" selected>5년</option><option value="87600">10년</option></select></label></div>
+<div class="row"><label>체크포인트 간격 <select id="ci"><option value="0.25">15분</option><option value="0.5">30분</option><option value="1">1시간</option><option value="3" selected>3시간</option><option value="6">6시간</option><option value="12">12시간</option><option value="24">24시간</option></select></label><label>저장 1회 시간 <select id="cs"><option value="2">2분</option><option value="5" selected>5분</option><option value="15">15분</option></select></label><label>재시작 준비 <select id="rt"><option value="10">10분</option><option value="30" selected>30분</option></select></label><button id="go">30일 학습 돌려 보기</button><button class="sec" id="opt">최적 간격 추천</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 210"></svg>
+<div class="grid2" style="margin-top:8px"><div id="out"></div><div class="log" id="log"></div></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 부품이 N배 많으면 어딘가 고장 날 때까지의 평균 시간은 1/N로 줄어듭니다. 5년에 한 번 고장 나는 GPU도 4096대를 묶으면 평균 10시간마다 어딘가 고장이 납니다.<br>• 그래서 대규모 학습은 체크포인트(중간 저장)를 주기적으로 하고, 고장 나면 마지막 저장 지점부터 다시 합니다. 저장과 재시작에도 시간이 들어 '실제 진도'가 줄어듭니다.<br>• 네트워크는 저장을 빠르게(스토리지 네트워크), 고장을 빨리 찾게(모니터링), 고장 난 노드를 빼고 바로 이어 가게(예비 노드) 도와야 합니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const DAYS=30,HRS=DAYS*24;
+function mtbf(){return +mt.value/ +ng.value}
+function fmtH(h){return h>=8760?`${(h/8760).toFixed(0)}년`:h>=48?`${(h/24).toFixed(1)}일`:h>=1?`${h.toFixed(1)}시간`:`${Math.round(h*60)}분`}
+function sim(){const M=mtbf(),I=+ci.value,C=+cs.value/60,Rt=+rt.value/60;let t=0,prog=0,saved=0,sinceCk=0,ev=[],nf=0,lost=0,ckT=0,rsT=0;
+let nextF=-Math.log(1-Math.random())*M;
+while(t<HRS){// 계산 구간: 다음 체크포인트까지
+const need=I-sinceCk,toF=nextF-t;if(toF<need){t+=toF;sinceCk+=toF;ev.push(["work",t-toF,t]);ev.push(["lost",t-sinceCk,t]);lost+=sinceCk;prog=saved;sinceCk=0;nf++;ev.push(["fail",t]);t+=Rt;rsT+=Rt;ev.push(["restart",t-Rt,t]);nextF=t+(-Math.log(1-Math.random())*M);continue}
+t+=need;ev.push(["work",t-need,t]);sinceCk=0;// 저장
+if(nextF-t<C){const d=nextF-t;t+=d;ckT+=d;lost+=I;prog=saved;nf++;ev.push(["lost",t-d-I,t-d]);ev.push(["fail",t]);t+=Rt;rsT+=Rt;ev.push(["restart",t-Rt,t]);nextF=t+(-Math.log(1-Math.random())*M);continue}
+t+=C;ckT+=C;saved+=I;prog=saved;ev.push(["ck",t])}
+const good=Math.max(0,HRS-lost-ckT-rsT);return{ev,nf,lost,ckT,rsT,good,M}}
+function draw(R){const X=h=>20+Math.min(h,HRS)/HRS*760;let s=`<text x="20" y="18" font-size="12" font-weight="700">30일 동안의 학습 (왼쪽 → 오른쪽)</text><rect x="20" y="40" width="760" height="50" fill="#9b86d9" opacity=".25"/>`;
+R.ev.forEach(e=>{if(e[0]=="lost")s+=`<rect x="${X(e[1])}" y="40" width="${Math.max(.6,X(e[2])-X(e[1]))}" height="50" fill="#e69500"/>`;if(e[0]=="restart")s+=`<rect x="${X(e[1])}" y="40" width="${Math.max(.6,X(e[2])-X(e[1]))}" height="50" fill="#999"/>`});
+R.ev.forEach(e=>{if(e[0]=="ck"&&R.ev.filter(x=>x[0]=="ck").length<400)s+=`<line x1="${X(e[1])}" y1="86" x2="${X(e[1])}" y2="96" stroke="#2e8b57" stroke-width="1.2"/>`;if(e[0]=="fail")s+=`<line x1="${X(e[1])}" y1="34" x2="${X(e[1])}" y2="96" stroke="#d9534f" stroke-width="1.6"/>`});
+for(let d=0;d<=DAYS;d+=5)s+=`<text x="${X(d*24)}" y="110" text-anchor="middle" font-size="10" fill="#999">${d}일</text>`;
+const tot=HRS,parts=[["실제 진도",R.good,"#6b4fbb"],["버려진 계산",R.lost,"#e69500"],["저장(체크포인트)",R.ckT,"#2e8b57"],["재시작 준비",R.rsT,"#999"]];let x=20;
+s+=`<text x="20" y="140" font-size="12" font-weight="700">30일(720시간)을 어디에 썼나</text>`;parts.forEach(([n,v,c])=>{const w=v/tot*760;s+=`<rect x="${x}" y="150" width="${Math.max(0,w)}" height="26" fill="${c}"/>`;if(w>70)s+=`<text x="${x+4}" y="168" font-size="11" fill="#fff" font-weight="700">${n} ${Math.round(v/tot*100)}%</text>`;x+=w});
+s+=`<text x="20" y="200" font-size="11" fill="#666">■ 보라: 진도로 남은 계산 ■ 주황: 고장으로 버려진 계산 ■ 초록: 저장 ■ 회색: 재시작 · 빨간 선: 고장</text>`;sv.innerHTML=s}
+function run(){const R=sim();draw(R);const eff=R.good/HRS;
+out.innerHTML=`<table><tr><th>클러스터 평균 고장 간격</th><td><b>${fmtH(R.M)}</b> <span class="mut">(= GPU 1대 ${fmtH(+mt.value)} ÷ ${(+ng.value).toLocaleString()})</span></td></tr><tr><th>30일 동안 고장</th><td><b class="${R.nf>10?"bad":""}">${R.nf}번</b></td></tr><tr><th>실제 진도(유효 학습률)</th><td><b class="${eff<.8?"bad":"ok"}">${Math.round(eff*100)}%</b></td></tr><tr><th>체크포인트 횟수</th><td>${R.ev.filter(e=>e[0]=="ck").length}번</td></tr></table>`;
+const best=Math.sqrt(2*(+cs.value/60)*R.M);log.textContent=`GPU ${(+ng.value).toLocaleString()}대 → 평균 ${fmtH(R.M)}마다 어딘가 고장.\n체크포인트 ${fmtH(+ci.value)}마다: 고장 한 번에 평균 ${fmtH(+ci.value/2)} 정도의 계산을 버립니다.\n`+(+ci.value>R.M?"⚠️ 저장 간격이 고장 간격보다 길어, 저장하기 전에 고장 나서 진도가 거의 안 나갑니다!\n":"")+`추천 간격 ≈ √(2 × 저장 시간 × 고장 간격) = ${fmtH(best)}`}
+opt.onclick=()=>{const best=Math.sqrt(2*(+cs.value/60)*mtbf());let bi=0,bd=1e9;[...ci.options].forEach((o,i)=>{const d=Math.abs(Math.log(+o.value/best));if(d<bd){bd=d;bi=i}});ci.selectedIndex=bi;run();log.textContent+=`\n→ 가장 가까운 ${ci.selectedOptions[0].text}로 맞췄습니다.`};
+go.onclick=run;[ng,mt,ci,cs,rt].forEach(e=>e.onchange=run);run();
+</script></body></html>
