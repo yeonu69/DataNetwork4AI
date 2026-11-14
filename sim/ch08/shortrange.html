@@ -1,0 +1,25 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>근거리 무선 고르기 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">8장 시뮬레이터</div><h1>근거리 무선 고르기</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>예시 버튼(교통카드, 무선 이어폰, 스마트 전구 50개 등)을 누르거나, 아래 네 가지 조건을 직접 고릅니다.</li><li>각 무선 기술이 조건에 얼마나 맞는지 점수 막대로 나오고, 가장 잘 맞는 기술이 추천됩니다.</li><li>조건 하나만 바꿔 보세요. 예를 들어 '전력'을 '건전지로 몇 년'으로 바꾸면 Wi-Fi가 탈락합니다.</li><li>"빠르고, 멀리 가고, 전기도 적게 먹는 기술은 없다"는 트레이드오프를 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><button class="sec" data-e="0">교통카드</button><button class="sec" data-e="1">무선 이어폰</button><button class="sec" data-e="2">스마트 전구 50개</button><button class="sec" data-e="3">물류 창고 재고 관리</button><button class="sec" data-e="4">집 CCTV</button><button class="sec" data-e="5">스마트워치 심박 센서</button></div>
+<table><tr><td>거리</td><td><select id="q0"><option value="0">몇 cm (대기만 하면)</option><option value="1">1~10 m (방 안)</option><option value="2">10~100 m (집 전체)</option></select></td></tr>
+<tr><td>데이터 양</td><td><select id="q1"><option value="0">아주 적음 (번호, 센서 값)</option><option value="1">중간 (음악, 음성)</option><option value="2">많음 (영상, 파일)</option></select></td></tr>
+<tr><td>전력</td><td><select id="q2"><option value="0">배터리 없음 (전파로 전원 받기)</option><option value="1">건전지로 몇 년</option><option value="2">매일 충전 OK</option><option value="3">콘센트에 꽂음</option></select></td></tr>
+<tr><td>연결할 기기 수</td><td><select id="q3"><option value="0">1:1</option><option value="1">몇 대</option><option value="2">수십~수백 대 (그물망)</option></select></td></tr></table>
+<canvas id="cv" width="760" height="250" style="margin-top:8px"></canvas><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• NFC·RFID는 '아주 가까이, 아주 적게, 전력 거의 0', 블루투스(BLE)는 '몸 주변, 적은 전력', 지그비는 '많은 기기를 그물처럼', Wi-Fi는 '빠르고 멀리, 대신 전력 많이'입니다.<br>• 속도·거리·전력·기기 수를 한꺼번에 다 만족하는 기술은 없어서, 용도에 맞게 골라 씁니다.<br>• 최근에는 스마트홈 표준 Matter가 Wi-Fi·Thread(지그비와 같은 무선 바탕) 등을 한 앱으로 묶어 줍니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+// [이름, 거리 적합(0,1,2), 데이터 적합, 전력 적합(0~3), 기기 수 적합, 색, 한 줄]
+const T=[["NFC",[3,0,0],[3,1,0],[3,2,2,2],[3,0,0],"#e6457a","~10 cm, 424 kbps, 카드는 배터리 없음"],["RFID(UHF)",[2,2,1],[3,0,0],[3,2,1,1],[1,3,2],"#e69500","수 m, 태그 수백 개 동시 읽기, 태그는 배터리 없음"],
+["블루투스 LE",[1,3,1],[3,2,0],[0,3,3,3],[3,2,1],"#3a86ff","~10 m+, 1~2 Mbps, 코인 전지로 수년"],["블루투스 클래식",[1,3,1],[1,3,1],[0,0,3,3],[3,1,0],"#6b4fbb","~10 m, 최대 3 Mbps, 음악 스트리밍"],
+["지그비/Thread",[0,3,3],[3,1,0],[0,3,2,3],[1,2,3],"#2e8b57","~10~100 m(메시), 250 kbps, 건전지 수년, 수백 대 메시"],["Wi-Fi",[0,2,3],[0,2,3],[0,0,1,3],[2,3,2],"#555","~50 m, 수백 Mbps~Gbps, 전력 많이"]];
+const EX=[[0,0,0,0],[1,1,2,0],[2,0,3,2],[1,0,0,2],[2,2,3,1],[1,0,2,0]];const g=cv.getContext('2d');
+function run(){const q=[q0,q1,q2,q3].map(e=>+e.value);const sc=T.map(t=>{const v=[t[1][q[0]],t[2][q[1]],t[3][q[2]],t[4][q[3]]];return Math.min(...v)==0?Math.min(...v):v.reduce((a,b)=>a+b,0)});
+const W=760;g.clearRect(0,0,W,250);g.font="13px sans-serif";const mx=12;let best=0;sc.forEach((s,i)=>{if(s>sc[best])best=i});
+T.forEach((t,i)=>{const y=12+i*39;g.fillStyle="#333";g.font="bold 13px sans-serif";g.fillText(t[0],8,y+18);g.font="11px sans-serif";g.fillStyle="#888";g.fillText(t[6],150,y+34);
+const w=sc[i]/mx*480;g.fillStyle=sc[i]==0?"#eee":i==best?t[5]:t[5]+"88";g.fillRect(150,y+4,Math.max(w,4),20);g.fillStyle="#333";g.font="12px sans-serif";g.fillText(sc[i]==0?"탈락 (조건 하나를 전혀 못 맞춤)":sc[i]+"점"+(i==best?"  ← 추천":""),160+Math.max(w,4),y+19)});
+const why=["거리","데이터 양","전력","기기 수"];log.textContent=`추천: ${T[best][0]} (${T[best][6]})\n탈락: `+T.map((t,i)=>{if(sc[i])return null;const k=[t[1][q[0]],t[2][q[1]],t[3][q[2]],t[4][q[3]]].findIndex(v=>v==0);return `${t[0]}(${why[k]})`}).filter(Boolean).join(", ")}
+[q0,q1,q2,q3].forEach(e=>e.onchange=run);document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{EX[+b.dataset.e].forEach((v,i)=>[q0,q1,q2,q3][i].value=v);run()});q0.value=1;q1.value=1;q2.value=2;run();
+</script></body></html>

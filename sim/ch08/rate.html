@@ -1,0 +1,22 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wi-Fi 체감 속도 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">8장 시뮬레이터</div><h1>Wi-Fi 체감 속도는 왜 변할까</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>공유기 상자에 적힌 최대 속도(예: 1201 Mbps)부터 시작해, 내 손에 오는 속도가 단계마다 어떻게 깎이는지 폭포 그래프로 봅니다.</li><li>거리를 늘리면 변조가 낮아져(5장 QAM) 링크 속도 자체가 떨어집니다.</li><li>같이 쓰는 사람 수와 같은 채널의 이웃 공유기 수를 늘려 보세요. 공기는 한 번에 한 명만 쓸 수 있어 나눠 가집니다.</li><li>[멀리 있는 느린 기기 1대]를 켜면, 그 기기가 공기를 오래 붙잡아 모두가 느려지는 현상도 확인합니다.</li></ol></div>
+<div class="card"><table><tr><td>공유기까지 거리</td><td><input type="range" id="d" min="1" max="30" value="5"> <b id="dv"></b> m</td></tr><tr><td>함께 쓰는 사용자</td><td><input type="range" id="u" min="1" max="20" value="4"> <b id="uv"></b>명</td></tr><tr><td>같은 채널 이웃 공유기</td><td><input type="range" id="nb" min="0" max="5" value="1"> <b id="nbv"></b>대</td></tr></table>
+<div class="row"><label><input type="checkbox" id="slow"> 멀리 있는 느린 기기 1대</label></div>
+<canvas id="cv" width="760" height="260"></canvas><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 상자에 적힌 속도는 최고 조건의 '링크 속도'이고, 실제로는 프레임 헤더·ACK·대기 시간 때문에 60% 안팎만 데이터에 쓰입니다.<br>• Wi-Fi는 공기를 나눠 쓰는 반이중 매체라서, 같은 채널을 쓰는 사람과 이웃 공유기가 많을수록 내 몫이 줄어듭니다.<br>• 거리가 멀어지면 변조가 낮아지고, 느린 기기는 공기를 오래 차지해 모두를 느리게 만듭니다. 그래서 AP를 촘촘히, 채널은 겹치지 않게 둡니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const g=cv.getContext('2d');
+function run(){const D=+d.value,U=+u.value,N=+nb.value,S=slow.checked;dv.textContent=D;uv.textContent=U;nbv.textContent=N;
+const rssi=20-(20*Math.log10(D)+20*Math.log10(5500)-27.55+6+(D>8?7:0));const mcs=[[-50,1201,"1024-QAM"],[-57,1080,"256-QAM 5/6"],[-62,865,"256-QAM 3/4"],[-67,649,"64-QAM"],[-72,433,"16-QAM"],[-77,216,"QPSK"],[-82,72,"BPSK"],[-200,0,"끊김"]].find(m=>rssi>m[0]);
+const link=mcs[1],mac=link*0.62,air=1/(1+N*0.5);const mine=mac*air;
+let per,share;if(S){const slowRate=29;const t=(U)/mac+1/slowRate;per=1/t;share=per}else{per=mine/U;share=per}
+const st=[["상자에 적힌 최대",1201],[`거리 ${D} m → ${mcs[2]}`,link],["헤더·ACK·대기 (약 62%)",mac],[`이웃 공유기 ${N}대와 공기 나눔`,mine],[S?`사용자 ${U}명 + 느린 기기`:`사용자 ${U}명이 나눔`,share]];
+const W=760,H=260,bw=120,Y=v=>H-40-v/1201*(H-70);g.clearRect(0,0,W,H);g.font="11.5px sans-serif";
+st.forEach(([t,v],i)=>{const x=30+i*(bw+22);g.fillStyle=i==4?"#e6457a":"#9b86d9";g.fillRect(x,Y(v),bw,H-40-Y(v));g.fillStyle="#333";g.font="bold 13px sans-serif";g.fillText(v.toFixed(v<10?1:0)+" Mbps",x+4,Y(v)-6);g.font="11px sans-serif";
+const w=t.length>12?[t.slice(0,12),t.slice(12)]:[t];w.forEach((l,j)=>g.fillText(l,x,H-24+j*13));if(i<4){g.strokeStyle="#ccc";g.setLineDash([3,3]);g.beginPath();g.moveTo(x+bw,Y(v));g.lineTo(x+bw+22,Y(v));g.stroke();g.setLineDash([])}});
+log.textContent=`신호 세기 약 ${rssi.toFixed(0)} dBm → ${mcs[2]}, 링크 속도 ${link} Mbps\n내 손에 오는 속도 ≈ ${share.toFixed(1)} Mbps (상자 숫자의 ${(share/1201*100).toFixed(1)}%)`+(S?`\n느린 기기(29 Mbps)가 같은 양을 보내려고 공기를 오래 차지해서 모두가 함께 느려졌습니다. (Wi-Fi 6의 OFDMA·에어타임 공정성이 이 문제를 줄여 줍니다)`:"")}
+[d,u,nb].forEach(e=>e.oninput=run);slow.onchange=run;run();
+</script></body></html>

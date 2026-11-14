@@ -1,0 +1,25 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wi-Fi 연결 3단계 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">8장 시뮬레이터</div><h1>Wi-Fi 연결 3단계</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>노트북에서 Wi-Fi 이름(SSID)을 눌러 접속할 때 실제로 오가는 메시지를 순서대로 봅니다. [한 단계]를 누를 때마다 화살표가 하나씩 그려집니다.</li><li>메시지는 ① 찾기(스캔) ② 인증·연결 ③ 암호 키 만들기(WPA2/3) ④ IP 받기(DHCP) 네 묶음으로 색이 나뉩니다.</li><li>[비밀번호 틀림]을 체크하고 다시 해 보면 어느 단계에서 실패하는지 확인합니다.</li><li>[숨긴 SSID]를 체크하면 비콘 대신 노트북이 먼저 이름을 불러 찾는(프로브) 방식으로 바뀝니다.</li></ol></div>
+<div class="card"><div class="row"><button id="st">한 단계</button><button class="sec" id="au">끝까지</button><button class="sec" id="rs">처음으로</button><label><input type="checkbox" id="wr"> 비밀번호 틀림</label><label><input type="checkbox" id="hd"> 숨긴 SSID</label></div>
+<svg class="stage" id="sv" viewBox="0 0 800 560"></svg><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• Wi-Fi 연결은 '찾기 → 인증·연결 → 키 만들기 → IP 받기' 순서입니다. 앞의 셋은 2계층(무선 링크), 마지막 DHCP는 3계층 이야기입니다.<br>• 비밀번호는 공중으로 보내지 않습니다. 4-way 핸드셰이크에서 서로 같은 비밀번호로 만든 값이 맞는지만 확인합니다.<br>• "Wi-Fi는 연결됐는데 인터넷이 안 돼요"는 대개 마지막 IP 받기(DHCP) 단계의 문제입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const X={L:120,A:420,D:680},C={1:"#3a86ff",2:"#6b4fbb",3:"#e69500",4:"#2e8b57",9:"#d9534f"};let k=0,steps=[],timer=null;
+function build(){const s=[];if(hd.checked){s.push([1,"L","A","Probe Request (SSID=\"우리집\" 있나요?)","숨긴 SSID는 비콘에 이름이 없으므로 노트북이 이름을 직접 불러 찾습니다."]);s.push([1,"A","L","Probe Response (네, 여기 있어요. 채널 6, WPA2)",""])}
+else{s.push([1,"A","L","Beacon (SSID=\"우리집\", 채널 6, WPA2) ×10/초","AP는 1초에 약 10번 '나 여기 있어요' 비콘을 외칩니다. 노트북 목록의 Wi-Fi 이름이 이것입니다."])}
+s.push([2,"L","A","Authentication Request (Open System)","WPA2에서 이 '인증'은 형식적인 인사입니다. 진짜 확인은 ③단계에서 합니다."],[2,"A","L","Authentication Response (성공)",""],[2,"L","A","Association Request (속도·기능 목록)","연결(association) 요청: 내가 지원하는 속도와 기능을 알립니다."],[2,"A","L","Association Response (AID=1)","이제 링크는 연결됨. 하지만 아직 암호 키가 없어 데이터는 못 보냅니다."]);
+s.push([3,"A","L","EAPOL 1/4 (ANonce: AP의 난수)","AP가 난수를 보냅니다."]);
+if(wr.checked){s.push([3,"L","A","EAPOL 2/4 (SNonce + MIC)","노트북이 '틀린 비밀번호'로 만든 키로 MIC(확인 값)를 계산해 보냅니다."],[9,"A","L","Deauthentication (MIC 불일치)","AP가 계산한 MIC와 다르므로 비밀번호가 틀렸다고 판단해 연결을 끊습니다. 노트북 화면: '네트워크에 연결할 수 없음'"]);return s}
+s.push([3,"L","A","EAPOL 2/4 (SNonce + MIC)","노트북도 난수를 보내고, 비밀번호로 만든 키로 MIC를 붙입니다. 비밀번호 자체는 보내지 않습니다."],[3,"A","L","EAPOL 3/4 (그룹 키, 암호화됨)","AP가 MIC를 확인 → 같은 비밀번호! 브로드캐스트용 그룹 키를 암호화해 줍니다."],[3,"L","A","EAPOL 4/4 (확인)","이제 둘 다 같은 암호 키를 가졌습니다. 여기부터 모든 데이터는 암호화됩니다."]);
+s.push([4,"L","D","DHCP Discover (브로드캐스트)","Wi-Fi는 연결됨! 이제 IP 주소를 받아야 인터넷을 쓸 수 있습니다(12장)."],[4,"D","L","DHCP Offer (192.168.0.23 어때요?)",""],[4,"L","D","DHCP Request (그걸로 할게요)",""],[4,"D","L","DHCP Ack (IP·마스크·게이트웨이·DNS)","노트북 화면: '연결됨, 인터넷 사용 가능' 🎉"]);return s}
+function draw(){let s="";[["L","노트북"],["A","AP(공유기 무선부)"],["D","DHCP 서버(공유기)"]].forEach(([c,n])=>{s+=`<rect x="${X[c]-75}" y="8" width="150" height="34" rx="8" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="${X[c]}" y="30" text-anchor="middle" font-weight="700" font-size="13">${n}</text><line x1="${X[c]}" y1="42" x2="${X[c]}" y2="555" stroke="#ccc" stroke-dasharray="4 4"/>`});
+const lb={1:"① 찾기",2:"② 인증·연결",3:"③ 키 만들기",4:"④ IP 받기"};let last=0;
+steps.slice(0,k).forEach(([g,a,b,t],i)=>{const y=70+i*34,x1=X[a],x2=X[b],c=C[g];if(g!=last&&g!=9){s+=`<text x="790" y="${y+4}" text-anchor="end" font-size="12" font-weight="700" fill="${c}">${lb[g]}</text>`;last=g}
+s+=`<line x1="${x1}" y1="${y}" x2="${x2+(x2>x1?-8:8)}" y2="${y}" stroke="${c}" stroke-width="2.5"/><path d="M${x2} ${y} l${x2>x1?-10:10} -5 v10z" fill="${c}"/><text x="${(x1+x2)/2}" y="${y-6}" text-anchor="middle" font-size="11.5" fill="${c}">${t}</text>`});sv.innerHTML=s}
+function step(){if(k>=steps.length){clearInterval(timer);timer=null;return}const m=steps[k];k++;if(m[4])log.textContent+=`${k}. ${m[4]}\n`;log.scrollTop=1e9;draw()}
+function reset(){clearInterval(timer);timer=null;steps=build();k=0;log.textContent="";draw()}
+st.onclick=step;au.onclick=()=>{if(!timer)timer=setInterval(step,500)};rs.onclick=reset;wr.onchange=hd.onchange=reset;reset();
+</script></body></html>
