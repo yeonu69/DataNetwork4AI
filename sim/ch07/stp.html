@@ -1,0 +1,39 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>루프와 스패닝 트리 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">7장 시뮬레이터</div><h1>루프와 스패닝 트리(STP)</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>스위치 4대가 고리 모양으로 연결되어 있습니다(예비 경로를 위해 일부러 이렇게 연결합니다).</li><li>STP를 끈 채 [PC가 브로드캐스트]를 누릅니다. 프레임이 고리를 끝없이 돌며 복제되어 순식간에 망이 마비됩니다(브로드캐스트 폭풍).</li><li>STP를 켜면 우선순위가 가장 낮은 스위치가 루트 브리지(왕관)로 뽑히고, 고리를 끊기 위해 포트 하나가 차단(✕)됩니다. 다시 브로드캐스트해 보세요.</li><li>링크를 눌러 끊어 보거나 스위치 우선순위를 바꿔 보세요. STP가 다시 계산해 차단했던 포트를 열어 줍니다.</li></ol></div>
+<div class="card"><div class="row"><label><input type="checkbox" id="on" checked> STP 켜기</label><button id="bc">PC가 브로드캐스트</button><button class="sec" id="fx">끊은 링크 모두 복구</button></div>
+<div class="row" id="pri"></div>
+<svg class="stage" id="sv" viewBox="0 0 800 340"></svg>
+<div class="row"><span class="pill">돌아다니는 프레임 수</span><span class="big" id="fc">0</span></div><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 이더넷 프레임에는 수명(TTL)이 없어서, 스위치 사이에 고리가 있으면 브로드캐스트가 끝없이 돌며 불어나 네트워크가 멈춥니다.<br>• STP는 우선순위(브리지 ID)가 가장 낮은 스위치를 루트로 뽑고, 루트까지 가장 싼 길만 남긴 채 나머지 포트를 차단해 고리를 없앱니다.<br>• 링크가 끊기면 차단했던 포트를 다시 열어 예비 경로로 씁니다. 예비 길은 두되 고리는 없게 만드는 것이 STP의 목적입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const S={S1:[230,90],S2:[570,90],S3:[230,260],S4:[570,260]},E=[["S1","S2"],["S2","S4"],["S4","S3"],["S3","S1"],["S1","S4"]];let PR={S1:32768,S2:4096,S3:32768,S4:32768},cut=new Set(),timer=null;
+const MACID={S1:"aa:01",S2:"aa:02",S3:"aa:03",S4:"aa:04"};
+pri.innerHTML=Object.keys(S).map(k=>`<label>${k} 우선순위 <select data-k="${k}">${[4096,8192,16384,32768,61440].map(v=>`<option ${v==PR[k]?"selected":""}>${v}</option>`).join("")}</select></label>`).join("");
+pri.querySelectorAll("select").forEach(s=>s.onchange=()=>{PR[s.dataset.k]=+s.value;draw()});
+const bid=k=>PR[k]*1e6+parseInt(MACID[k].replace(":",""),16);
+const live=()=>E.filter((e,i)=>!cut.has(i));
+function stp(){const root=Object.keys(S).sort((a,b)=>bid(a)-bid(b))[0];const cost={},rp={};Object.keys(S).forEach(k=>cost[k]=1e9);cost[root]=0;
+for(let it=0;it<5;it++)live().forEach(([a,b])=>{[[a,b],[b,a]].forEach(([u,v])=>{const c=cost[u]+4;if(c<cost[v]||(c==cost[v]&&rp[v]&&bid(u)<bid(rp[v]))){if(c<=cost[v]){cost[v]=c;rp[v]=u}}})});
+const act=new Set();live().forEach(e=>{const[a,b]=e;if(rp[a]==b||rp[b]==a)act.add(E.indexOf(e))});
+const blk={};live().forEach(e=>{const i=E.indexOf(e);if(!act.has(i)){const[a,b]=e;const loser=(cost[a]>cost[b]||(cost[a]==cost[b]&&bid(a)>bid(b)))?a:b;blk[i]=loser}});return{root,cost,rp,act,blk}}
+function draw(hot){const st=on.checked?stp():null;let s="";
+E.forEach(([a,b],i)=>{const[x1,y1]=S[a],[x2,y2]=S[b],dead=cut.has(i),bl=st&&st.blk[i]!==undefined;s+=`<line data-e="${i}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${dead?"#eee":hot&&!bl?"#d9534f":bl?"#ccc":"#6b4fbb"}" stroke-width="${hot&&!bl&&!dead?9:7}" ${dead||bl?'stroke-dasharray="10 8"':""} style="cursor:pointer"/>`;
+if(bl){const w=st.blk[i],[wx,wy]=S[w],t=0.25,ox=wx+(S[w==a?b:a][0]-wx)*t,oy=wy+(S[w==a?b:a][1]-wy)*t;s+=`<text x="${ox}" y="${oy+8}" text-anchor="middle" font-size="26" fill="#d9534f" font-weight="700">✕</text>`}
+if(dead)s+=`<text x="${(x1+x2)/2}" y="${(y1+y2)/2-6}" text-anchor="middle" font-size="12" fill="#999">끊김(눌러서 복구)</text>`});
+Object.entries(S).forEach(([k,[x,y]])=>{const r=st&&st.root==k;s+=`<rect x="${x-55}" y="${y-28}" width="110" height="56" rx="10" fill="${r?"#fff7e0":"#fff"}" stroke="${r?"#e69500":"#9b86d9"}" stroke-width="${r?3:2}"/><text x="${x}" y="${y-4}" text-anchor="middle" font-weight="700">${r?"👑 ":""}${k}</text><text x="${x}" y="${y+14}" text-anchor="middle" font-size="11" fill="#666">${PR[k]}${st?" · 비용 "+st.cost[k]:""}</text>`});
+s+=`<rect x="40" y="160" width="60" height="30" rx="6" fill="#fff" stroke="#999"/><text x="70" y="180" text-anchor="middle" font-size="12">PC</text><line x1="100" y1="175" x2="175" y2="105" stroke="#999" stroke-width="3"/>`;
+sv.innerHTML=s;sv.querySelectorAll("line[data-e]").forEach(l=>l.onclick=()=>{const i=+l.dataset.e;cut.has(i)?cut.delete(i):cut.add(i);stop();draw()});
+if(st&&!hot)log.textContent=`루트 브리지: ${st.root} (우선순위 ${PR[st.root]}가 가장 낮음)\n`+Object.keys(S).filter(k=>k!=st.root).map(k=>`${k}: 루트까지 비용 ${st.cost[k]}, 루트 포트는 ${st.rp[k]||"없음"} 방향`).join("\n")+`\n차단 포트: ${Object.entries(st.blk).map(([i,w])=>`${w}의 ${E[i].find(x=>x!=w)} 방향`).join(", ")||"없음 (고리가 없음)"}`;else if(!st&&!hot)log.textContent="STP가 꺼져 있습니다. 고리가 그대로 남아 있습니다.";return st}
+function stop(){clearInterval(timer);timer=null;fc.textContent=0}
+bc.onclick=()=>{stop();const st=on.checked?stp():null;const links=live().filter(e=>!st||st.blk[E.indexOf(e)]===undefined);
+let cnt={};const adj=k=>links.filter(e=>e.includes(k)).map(e=>e[0]==k?e[1]:e[0]);adj("S1").forEach(v=>cnt["S1>"+v]=1);let step=0,total=0,seen=new Set(["S1"]);
+log.textContent="PC가 S1에 브로드캐스트 프레임을 보냄\n";draw(true);
+timer=setInterval(()=>{step++;const nx={};let n=0;for(const k in cnt){const[u,v]=k.split(">");seen.add(v);adj(v).filter(w=>w!=u).forEach(w=>{nx[v+">"+w]=(nx[v+">"+w]||0)+cnt[k]})}
+if(st){for(const k in nx){const[,w]=k.split(">");if(seen.has(w))delete nx[k]}}cnt=nx;n=Object.values(cnt).reduce((a,b)=>a+b,0);total+=n;fc.textContent=n.toLocaleString();
+if(!n){log.textContent+=`${step}단계 만에 모든 스위치에 한 번씩 전달되고 끝났습니다. ✅ (고리 없음)`;stop();draw();return}
+log.textContent+=`${step}단계: 링크 위 프레임 ${n.toLocaleString()}개\n`;log.scrollTop=1e9;if(n>1e6||step>25){log.textContent+=`💥 브로드캐스트 폭풍! 프레임이 계속 불어나 링크와 스위치 CPU가 꽉 찼습니다. 네트워크 마비.`;clearInterval(timer)}},500)};
+on.onchange=()=>{stop();draw()};fx.onclick=()=>{cut.clear();stop();draw()};draw();
+</script></body></html>

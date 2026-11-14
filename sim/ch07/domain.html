@@ -1,0 +1,29 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>충돌·브로드캐스트 도메인 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">7장 시뮬레이터</div><h1>충돌 도메인과 브로드캐스트 도메인</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>왼쪽·오른쪽 장비와 가운데 장비를 허브, 스위치, 라우터 중에서 고릅니다.</li><li>빨간 점선 테두리 하나가 충돌 도메인 하나, 파란 배경 하나가 브로드캐스트 도메인 하나입니다. 개수는 아래에 셉니다.</li><li>[A1이 브로드캐스트]를 눌러 브로드캐스트 프레임이 어디까지 퍼지는지 봅니다.</li><li>"허브는 아무것도 못 나누고, 스위치는 충돌 도메인을, 라우터는 브로드캐스트 도메인까지 나눈다"를 직접 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>왼쪽 <select id="L"><option value="h">허브</option><option value="s" selected>스위치</option></select></label><label>가운데 <select id="C"><option value="s">스위치</option><option value="r" selected>라우터</option></select></label><label>오른쪽 <select id="R"><option value="h" selected>허브</option><option value="s">스위치</option></select></label><button id="bc">A1이 브로드캐스트</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 330"></svg>
+<div class="row"><span class="pill">충돌 도메인</span><span class="big" id="cd" style="color:#d9534f"></span>&nbsp;<span class="pill">브로드캐스트 도메인</span><span class="big" id="bd" style="color:#3a86ff"></span></div><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 충돌 도메인: 동시에 보내면 서로 부딪히는 범위. 허브는 하나로 묶고, 스위치는 포트마다 나눕니다.<br>• 브로드캐스트 도메인: 브로드캐스트(ff:ff:…)가 퍼지는 범위. 스위치는 그대로 통과시키고, 라우터에서 멈춥니다.<br>• 그래서 "스위치 포트 수 = 충돌 도메인 수", "라우터 인터페이스(또는 VLAN) 수 = 브로드캐스트 도메인 수"로 셉니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const NM={h:"허브",s:"스위치",r:"라우터"};
+const PCS={A:[[60,60],[60,165],[60,270]],B:[[740,60],[740,165],[740,270]]},DEV={L:[220,165],C:[400,165],R:[580,165]};
+function draw(rec){const l=L.value,c=C.value,r=R.value;let s="";
+// broadcast domains
+if(c=="r"){s+=`<rect x="10" y="10" width="365" height="310" rx="16" fill="#e3efff"/><rect x="425" y="10" width="365" height="310" rx="16" fill="#e3efff"/>`}else s+=`<rect x="10" y="10" width="780" height="310" rx="16" fill="#e3efff"/>`;
+// collision domains
+const cdom=[];const side=(t,pcs,dev,cx)=>{if(t=="h"){const xs=pcs.map(p=>p[0]).concat([dev[0],cx]);cdom.push([Math.min(...xs)-50,25,Math.max(...xs)-Math.min(...xs)+100-(cx>dev[0]?60:-60)*0,280])}else{pcs.forEach(p=>cdom.push([Math.min(p[0],dev[0])-48,p[1]-28,Math.abs(p[0]-dev[0])+96,56]));cdom.push([Math.min(dev[0],cx)-10,dev[1]-40,Math.abs(cx-dev[0])+20,80])}};
+side(l,PCS.A,DEV.L,DEV.C[0]);side(r,PCS.B,DEV.R,DEV.C[0]);
+if(l=="h"){cdom[0]=[18,22,DEV.C[0]-40,286]}if(r=="h"){const i=l=="h"?1:4;cdom[i]=[DEV.C[0]+20,22,DEV.C[0]-40+2,286]}
+cdom.forEach(([x,y,w,h])=>s+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="none" stroke="#d9534f" stroke-width="2" stroke-dasharray="6 5"/>`);
+PCS.A.forEach(p=>s+=`<line x1="${p[0]}" y1="${p[1]}" x2="${DEV.L[0]}" y2="${DEV.L[1]}" stroke="#999" stroke-width="3"/>`);PCS.B.forEach(p=>s+=`<line x1="${p[0]}" y1="${p[1]}" x2="${DEV.R[0]}" y2="${DEV.R[1]}" stroke="#999" stroke-width="3"/>`);
+s+=`<line x1="${DEV.L[0]}" y1="165" x2="${DEV.R[0]}" y2="165" stroke="#999" stroke-width="3"/>`;
+[["L",l],["C",c],["R",r]].forEach(([k,t])=>{const[x,y]=DEV[k];s+=`<rect x="${x-42}" y="${y-20}" width="84" height="40" rx="8" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="${x}" y="${y+5}" text-anchor="middle" font-weight="700">${NM[t]}</text>`});
+["A","B"].forEach(g=>PCS[g].forEach((p,i)=>{const id=g+(i+1),on=rec&&rec.includes(id);s+=`<rect x="${p[0]-30}" y="${p[1]-16}" width="60" height="32" rx="6" fill="${id=="A1"&&rec?"#efe9ff":on?"#ffe08a":"#fff"}" stroke="#9b86d9" stroke-width="2"/><text x="${p[0]}" y="${p[1]+5}" text-anchor="middle" font-size="13" font-weight="700">${id}</text>`}));
+sv.innerHTML=s;const ncd=(l=="h"?1:4)+(r=="h"?1:4),nbd=c=="r"?2:1;cd.textContent=ncd+"개";bd.textContent=nbd+"개";
+if(!rec)log.textContent=`왼쪽 ${NM[l]}: ${l=="h"?"PC 3대와 위쪽 링크가 한 충돌 도메인":"포트 4개가 각각 충돌 도메인"} / 오른쪽 ${NM[r]}: ${r=="h"?"한 충돌 도메인":"포트마다 충돌 도메인"} / 가운데 ${NM[c]}: ${c=="r"?"브로드캐스트를 막아 둘로 나눔":"브로드캐스트를 통과시켜 하나로 둠"}`}
+bc.onclick=()=>{const rec=["A2","A3"].concat(C.value=="s"?["B1","B2","B3"]:[]);draw(rec);log.textContent=`A1이 ff:ff:ff:ff:ff:ff로 보냄 → ${rec.join(", ")}가 받음 (노랑).`+(C.value=="r"?" 라우터가 브로드캐스트를 넘기지 않아 오른쪽은 조용합니다.":" 스위치는 브로드캐스트를 모든 포트로 보내므로 오른쪽까지 퍼집니다.")};
+L.onchange=C.onchange=R.onchange=()=>draw();draw();
+</script></body></html>
