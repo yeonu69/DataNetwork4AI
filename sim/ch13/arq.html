@@ -1,0 +1,48 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARQ 3가지 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">13장 시뮬레이터</div><h1>ARQ: 정지-대기, Go-Back-N, 선택적 재전송</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>방식을 고르고 [시작]을 누르면 위(보내는 쪽)에서 아래(받는 쪽)로 패킷이, 아래에서 위로 ACK가 날아갑니다. 괄호 [ ]가 '확인 없이 보낼 수 있는 범위(윈도)'입니다.</li><li>날아가는 패킷이나 ACK를 <b>마우스로 클릭</b>하면 그 자리에서 사라집니다(손실). 손실률을 올려 자동으로 잃게 할 수도 있습니다.</li><li>Go-Back-N은 하나를 잃으면 그 뒤를 모두 다시 보내고, 선택적 재전송은 잃은 것만 다시 보냅니다. 받는 쪽이 순서가 어긋난 패킷을 버리는지(회색) 보관하는지(하늘색) 비교하세요.</li><li>같은 손실 조건에서 세 방식의 '끝난 시간'과 '보낸 패킷 수'를 아래 기록표에서 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><label>방식 <select id="md"><option value="sw">정지-대기 (Stop-and-Wait)</option><option value="gbn" selected>Go-Back-N</option><option value="sr">선택적 재전송 (Selective Repeat)</option></select></label><label>윈도 크기 <select id="wn"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>8</option></select></label><label>손실률 <input type="range" id="lr" min="0" max="40" value="0"> <b id="lv"></b></label></div>
+<div class="row"><button id="go">시작</button><button class="sec" id="pa">계속</button><label>속도 <input type="range" id="sp" min="1" max="4" value="2"></label><span class="mut">날아가는 패킷·ACK를 클릭하면 손실!</span></div>
+<canvas id="cv" width="800" height="380" style="cursor:crosshair"></canvas>
+<div class="row mut" style="font-size:12px"><span><b style="color:#bbb">■</b> 아직</span><span><b style="color:#ffd54a">■</b> 보냄·확인 대기</span><span><b style="color:#2e8b57">■</b> 확인 완료</span><span><b style="color:#3a86ff">■</b> 받아서 앱에 전달</span><span><b style="color:#9fd8ff">■</b> 순서 어긋나 보관 중</span><span><b style="color:#999">■</b> 순서 어긋나 버림</span></div>
+<div class="log" id="log" style="margin-top:6px"></div>
+<table id="tb" style="margin-top:8px"></table></div>
+<div class="key"><b>핵심 3줄</b><br>• 정지-대기는 하나 보내고 ACK를 받을 때까지 쉽니다. 단순하지만 거리가 멀수록(지연이 클수록) 회선 대부분이 놀게 됩니다.<br>• Go-Back-N은 윈도만큼 연달아 보내고, 받는 쪽은 순서대로 온 것만 받습니다. 하나를 잃으면 그 뒤를 전부 다시 보냅니다.<br>• 선택적 재전송은 받는 쪽이 어긋난 것도 보관하고, 잃은 것만 다시 보냅니다. 오늘날 TCP는 이 둘을 섞은 방식(누적 ACK + SACK)입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const N=14,TR=1400,TO=3600,GAP=260,BW=46,X0=(800-N*BW)/2+2,YS=40,YR=300;const ctx=cv.getContext("2d");
+let st,raf=null,last=0,paused=true,hist=[];
+function init(){const m=md.value;st={m,W:m=="sw"?1:+wn.value,t:0,base:0,next:0,snd:Array(N).fill(0),rcv:Array(N).fill(0),exp:0,flights:[],timer:{},lastSend:-1e9,sent:0,re:0,done:false,flash:{}};wn.disabled=m=="sw";log.textContent="";say(`${name()} 시작 (윈도 ${st.W}, 편도 ${TR/1000}초, 타임아웃 ${TO/1000}초)`)}
+const name=()=>({sw:"정지-대기",gbn:"Go-Back-N",sr:"선택적 재전송"})[st.m];
+function say(m){log.textContent+=`[${(st.t/1000).toFixed(1)}s] ${m}\n`;log.scrollTop=1e9}
+function send(i,re){st.flights.push({k:"d",i,t0:st.t,lost:Math.random()*100<+lr.value,re});st.snd[i]=Math.max(st.snd[i],1);st.sent++;if(re)st.re++;st.lastSend=st.t;if(st.m=="sr")st.timer[i]=st.t;else if(i==st.base||st.timer.g==null)st.timer.g=st.t}
+function ack(n){st.flights.push({k:"a",i:n,t0:st.t,lost:Math.random()*100<+lr.value})}
+function onData(i){const m=st.m;if(m=="sr"){if(i>=st.exp&&i<st.exp+st.W){if(st.rcv[i]==0||st.rcv[i]==3){st.rcv[i]=2}ack(i);say(`받는 쪽: ${i}번 도착 → ACK ${i}`+(i!=st.exp?` (기다리던 ${st.exp}번이 아직이라 보관)`:""));while(st.rcv[st.exp]==2){st.rcv[st.exp]=1;st.exp++}}else if(i<st.exp){ack(i);say(`받는 쪽: ${i}번은 이미 받음(ACK가 사라졌었나 봄) → ACK ${i} 다시`)}}
+else{if(i==st.exp){st.rcv[i]=1;st.exp++;ack(i);say(`받는 쪽: ${i}번 순서대로 도착 → 앱에 전달, ACK ${i}`)}else{if(i>st.exp){st.flash[i]=st.t;}ack(st.exp-1);say(`받는 쪽: ${i}번은 기다리던 ${st.exp}번이 아님 → 버리고 ACK ${st.exp-1} 다시 보냄`)}}}
+function onAck(n){if(n<0)return;if(st.m=="sr"){if(st.snd[n]!=2){st.snd[n]=2;delete st.timer[n];say(`보내는 쪽: ACK ${n} 받음`)}while(st.base<N&&st.snd[st.base]==2)st.base++}
+else{if(n>=st.base){for(let j=st.base;j<=n;j++)st.snd[j]=2;say(`보내는 쪽: ACK ${n} 받음 → ${n}번까지 모두 확인(누적 ACK)`);st.base=n+1;st.timer.g=st.base<st.next?st.t:null}else say(`보내는 쪽: 중복 ACK ${n} (무시)`)}}
+function tick(dt){st.t+=dt;
+for(const f of st.flights){if(f.gone)continue;const u=(st.t-f.t0)/TR;if(f.lost&&u>.5){f.gone=1;f.dead=st.t;say(`${f.k=="d"?f.i+"번 패킷":"ACK "+f.i}이(가) 중간에 사라짐 ✕`);continue}if(u>=1){f.gone=1;f.k=="d"?onData(f.i):onAck(f.i)}}
+st.flights=st.flights.filter(f=>!f.gone||(f.dead&&st.t-f.dead<700));
+if(st.m=="sr"){for(const i in st.timer)if(st.t-st.timer[i]>TO){say(`보내는 쪽: ${i}번 타이머 만료 → ${i}번만 다시 보냄`);send(+i,true)}}
+else if(st.timer.g!=null&&st.t-st.timer.g>TO){say(`보내는 쪽: 타이머 만료 → ${st.base}번부터 ${st.next-1}번까지 모두 다시 보냄`);st.timer.g=null;for(let j=st.base;j<st.next;j++)send(j,true)}
+if(st.next<N&&st.next<st.base+st.W&&st.t-st.lastSend>=GAP){send(st.next,false);st.next++}
+if(st.base>=N&&!st.done){st.done=true;say(`끝! ${N}개 전달에 ${(st.t/1000).toFixed(1)}초, 보낸 패킷 ${st.sent}개(재전송 ${st.re}개)`);hist.unshift([name(),st.W,lr.value,(st.t/1000).toFixed(1),st.sent,st.re]);hist=hist.slice(0,6);table()}}
+function table(){tb.innerHTML="<tr><th>방식</th><th>윈도</th><th>손실률</th><th>끝난 시간</th><th>보낸 패킷</th><th>재전송</th></tr>"+(hist.length?hist.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}%</td><td>${r[3]}초</td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join(""):'<tr><td colspan="6" class="mut">끝까지 보내면 여기에 기록됩니다.</td></tr>')}
+function pos(f){const u=((f.dead?f.dead:st.t)-f.t0)/TR;const x=X0+f.i*BW+(BW-6)/2;return f.k=="d"?[x,YS+40+(YR-YS-60)*Math.min(u,1)]:[x,YR-20-(YR-YS-60)*Math.min(u,1)]}
+function draw(){ctx.clearRect(0,0,800,380);ctx.font="bold 13px sans-serif";ctx.fillStyle="#333";ctx.fillText("보내는",8,YS+12);ctx.fillText("쪽",8,YS+28);ctx.fillText("받는",8,YR+12);ctx.fillText("쪽",8,YR+28);
+for(let i=0;i<N;i++){const x=X0+i*BW;ctx.fillStyle=["#e5e5e5","#ffd54a","#2e8b57"][st.snd[i]];ctx.fillRect(x,YS,BW-6,30);ctx.fillStyle=st.snd[i]==2?"#fff":"#333";ctx.font="bold 13px sans-serif";ctx.textAlign="center";ctx.fillText(i,x+(BW-6)/2,YS+20);
+const fl=st.flash[i]!=null&&st.t-st.flash[i]<900;ctx.fillStyle=fl?"#999":["#f2f2f2","#3a86ff","#9fd8ff"][st.rcv[i]];ctx.fillRect(x,YR,BW-6,30);ctx.fillStyle=st.rcv[i]==1&&!fl?"#fff":"#333";ctx.fillText(fl?"버림":i,x+(BW-6)/2,YR+20);
+const tm=st.m=="sr"?st.timer[i]:(i==st.base?st.timer.g:null);if(tm!=null&&st.snd[i]==1){const r=Math.min(1,(st.t-tm)/TO);ctx.fillStyle="#eee";ctx.fillRect(x,YS-9,BW-6,5);ctx.fillStyle=r>.8?"#d9534f":"#e69500";ctx.fillRect(x,YS-9,(BW-6)*r,5)}}
+ctx.textAlign="left";const wx=X0+st.base*BW-4,ww=Math.min(st.W,N-st.base)*BW+2;if(st.base<N){ctx.strokeStyle="#6b4fbb";ctx.lineWidth=3;ctx.strokeRect(wx,YS-14,ww,48);ctx.fillStyle="#6b4fbb";ctx.font="12px sans-serif";ctx.fillText(`윈도 ${st.W}`,wx,YS+48)}
+if(st.m=="sr"&&st.exp<N){ctx.strokeStyle="#3a86ff";ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.strokeRect(X0+st.exp*BW-4,YR-4,Math.min(st.W,N-st.exp)*BW+2,38);ctx.setLineDash([])}
+for(const f of st.flights){const[x,y]=pos(f);if(f.dead){ctx.fillStyle="#d9534f";ctx.font="bold 22px sans-serif";ctx.textAlign="center";ctx.fillText("✕",x,y+8);ctx.textAlign="left";continue}
+if(f.k=="d"){ctx.fillStyle=f.re?"#e69500":"#6b4fbb";ctx.fillRect(x-16,y-11,32,22);ctx.fillStyle="#fff";ctx.font="bold 12px sans-serif";ctx.textAlign="center";ctx.fillText(f.i,x,y+4)}
+else{ctx.fillStyle="#2e8b57";ctx.beginPath();ctx.arc(x,y,13,0,7);ctx.fill();ctx.fillStyle="#fff";ctx.font="bold 10px sans-serif";ctx.textAlign="center";ctx.fillText("A"+f.i,x,y+4)}ctx.textAlign="left"}
+ctx.fillStyle="#666";ctx.font="12px sans-serif";ctx.fillText(`시간 ${(st.t/1000).toFixed(1)}초 · 보낸 패킷 ${st.sent}개 (재전송 ${st.re}) · 받는 쪽이 기다리는 번호: ${st.exp<N?st.exp:"없음(완료)"}`,8,374)}
+function loop(n){const dt=Math.min(50,n-last);last=n;if(!paused&&!st.done)tick(dt*(+sp.value)/2);draw();raf=requestAnimationFrame(loop)}
+cv.onclick=e=>{const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*800/r.width,my=(e.clientY-r.top)*380/r.height;let best=null,bd=26;for(const f of st.flights){if(f.gone)continue;const[x,y]=pos(f),d=Math.hypot(x-mx,y-my);if(d<bd){bd=d;best=f}}if(best){best.gone=1;best.dead=st.t;say(`클릭! ${best.k=="d"?best.i+"번 패킷":"ACK "+best.i}을(를) 잃어버리게 했습니다 ✕`)}};
+go.onclick=()=>{init();paused=false;pa.textContent="일시정지"};pa.onclick=()=>{paused=!paused;pa.textContent=paused?"계속":"일시정지"};md.onchange=wn.onchange=()=>{init()};
+lr.oninput=()=>lv.textContent=lr.value+"%";lr.oninput();init();table();last=performance.now();raf=requestAnimationFrame(loop);
+</script></body></html>

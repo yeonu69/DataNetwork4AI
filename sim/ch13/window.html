@@ -1,0 +1,42 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>슬라이딩 윈도와 흐름 제어 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">13장 시뮬레이터</div><h1>슬라이딩 윈도와 흐름 제어: 받는 쪽 속도에 맞추기</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>보내는 쪽(왼쪽)은 데이터를 한 칸씩 보내고, 받는 쪽(오른쪽)은 수신 버퍼(8칸)에 쌓았다가 앱이 읽어 가는 만큼 비웁니다.</li><li>받는 쪽은 ACK마다 "지금 버퍼에 빈칸이 몇 개(rwnd)"인지 알려 줍니다. 보내는 쪽의 보라 괄호(윈도)는 그만큼만 열립니다.</li><li>[앱 읽기 속도]를 0(앱이 바쁨)으로 내려 보세요. 버퍼가 차고 rwnd=0이 되면 보내는 쪽이 멈추고, 가끔 '윈도 탐색(probe)'만 보냅니다.</li><li>다시 속도를 올리면 윈도가 열리며 전송이 재개됩니다. 아래 그래프에서 rwnd와 버퍼가 어떻게 움직이는지 봅니다.</li></ol></div>
+<div class="card"><div class="row"><label>앱 읽기 속도 <input type="range" id="rd" min="0" max="6" value="3"> <b id="rv"></b></label><label>수신 버퍼 <select id="bs"><option>4</option><option selected>8</option><option>12</option></select>칸</label><button class="sec" id="pa">일시정지</button><button class="sec" id="rs">처음으로</button></div>
+<canvas id="cv" width="800" height="300"></canvas>
+<canvas id="gr" width="800" height="150" style="margin-top:8px"></canvas>
+<div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 슬라이딩 윈도는 "확인을 기다리지 않고 보낼 수 있는 범위"입니다. ACK가 오면 창이 오른쪽으로 미끄러지며 다음 데이터를 보낼 수 있게 됩니다.<br>• 흐름 제어: 받는 쪽은 ACK에 남은 버퍼 크기(rwnd)를 실어 보내고, 보내는 쪽은 그보다 많이 보내지 않습니다. 받는 쪽이 넘치지 않게 하는 장치입니다.<br>• rwnd=0이면 보내는 쪽은 멈추고 가끔 탐색 세그먼트로 "이제 됐니?"를 묻습니다. 네트워크 혼잡에 맞추는 혼잡 제어(cwnd)와 함께, 실제 전송량은 둘 중 작은 값입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const TR=1200,GAP=220,PER=3000,M=40;const c=cv.getContext("2d"),g=gr.getContext("2d");
+let s,paused=false,last=0;
+function reset(){const B=+bs.value;s={t:0,B,acked:0,next:0,rwnd:B,buf:0,rcvd:0,read:0,fl:[],lastSend:-1e9,acc:0,probeAt:null,hist:[],sampleT:0,zero:false};log.textContent=""}
+function say(m){log.textContent+=`[${(s.t/1000).toFixed(1)}s] ${m}\n`;log.scrollTop=1e9}
+function tick(dt){s.t+=dt;
+for(const f of s.fl){if(f.done)continue;if(s.t-f.t0>=TR){f.done=1;if(f.k=="d"){if(s.buf<s.B){s.buf++;s.rcvd=f.i+1}s.fl.push({k:"a",t0:s.t,ack:s.rcvd,rwnd:s.B-s.buf})}
+else if(f.k=="p"){s.fl.push({k:"a",t0:s.t,ack:s.rcvd,rwnd:s.B-s.buf,pr:1})}
+else{if(f.ack>s.acked)s.acked=f.ack;const was=s.rwnd;s.rwnd=f.rwnd;if(s.rwnd==0&&!s.zero){s.zero=true;s.probeAt=s.t+PER;say(`ACK ${f.ack}, rwnd=0 → 받는 쪽 버퍼가 꽉 참! 보내는 쪽은 멈추고 ${PER/1000}초 뒤 윈도 탐색`)}else if(s.rwnd>0&&s.zero){s.zero=false;s.probeAt=null;say(`ACK ${f.ack}, rwnd=${s.rwnd} → 윈도가 다시 열림, 전송 재개`)}else if(f.pr)say(`탐색 응답: 아직 rwnd=0`)}}}
+s.fl=s.fl.filter(f=>!f.done);
+const rate=+rd.value;s.acc+=dt/1000*rate;while(s.acc>=1){s.acc-=1;if(s.buf>0){s.buf--;s.read++}}if(s.buf==0)s.acc=Math.min(s.acc,1);
+if(s.zero&&s.probeAt!=null&&s.t>=s.probeAt){s.fl.push({k:"p",t0:s.t});s.probeAt=s.t+PER;say("보내는 쪽: 윈도 탐색(probe) 전송 → \"이제 받을 수 있니?\"")}
+if(s.next<M&&s.next<s.acked+s.rwnd&&s.t-s.lastSend>=GAP){s.fl.push({k:"d",i:s.next,t0:s.t});s.next++;s.lastSend=s.t}
+if(s.t-s.sampleT>=250){s.sampleT=s.t;s.hist.push([s.t,s.rwnd,s.buf,s.next-s.acked]);if(s.hist.length>160)s.hist.shift()}
+if(s.read>=M&&s.buf==0&&!s.end){s.end=1;say(`${M}칸 모두 앱이 읽었습니다. 걸린 시간 ${(s.t/1000).toFixed(1)}초`)}}
+function draw(){c.clearRect(0,0,800,300);c.font="bold 13px sans-serif";c.fillStyle="#333";c.fillText("보내는 쪽 (보낼 데이터 0~39)",10,18);
+const bw=19,x0=10,y0=28;for(let i=0;i<M;i++){const x=x0+i*bw;c.fillStyle=i<s.acked?"#2e8b57":i<s.next?"#ffd54a":i<s.acked+s.rwnd?"#fff":"#ddd";c.fillRect(x,y0,bw-2,24);c.strokeStyle="#bbb";c.lineWidth=1;c.strokeRect(x,y0,bw-2,24);c.fillStyle=i<s.acked?"#fff":"#555";c.font="10px sans-serif";c.textAlign="center";c.fillText(i,x+(bw-2)/2,y0+16)}c.textAlign="left";
+const wx=x0+s.acked*bw-2,ww=Math.max(s.rwnd*bw,3);c.strokeStyle="#6b4fbb";c.lineWidth=3;c.strokeRect(wx,y0-5,Math.min(ww,800-wx-4),34);c.fillStyle="#6b4fbb";c.font="bold 12px sans-serif";c.fillText(`윈도 = rwnd ${s.rwnd}칸`+(s.rwnd==0?" (멈춤)":""),Math.min(wx,640),y0+46);
+c.font="11px sans-serif";c.fillStyle="#666";c.fillText("초록: 확인 완료   노랑: 보냄·확인 대기   흰색: 지금 보낼 수 있음   회색: 아직 보내면 안 됨",10,y0+64);
+const L=60,Rx=560,ya=130,yb=200;c.strokeStyle="#cfc6ea";c.lineWidth=2;c.beginPath();c.moveTo(L,ya);c.lineTo(Rx,ya);c.moveTo(L,yb);c.lineTo(Rx,yb);c.stroke();c.fillStyle="#999";c.font="11px sans-serif";c.fillText("데이터 →",L,ya-8);c.fillText("← ACK (확인 번호, rwnd)",L,yb+18);
+for(const f of s.fl){const u=Math.min(1,(s.t-f.t0)/TR);if(f.k=="d"||f.k=="p"){const x=L+(Rx-L)*u;c.fillStyle=f.k=="p"?"#e69500":"#6b4fbb";c.fillRect(x-13,ya-10,26,20);c.fillStyle="#fff";c.font="bold 10px sans-serif";c.textAlign="center";c.fillText(f.k=="p"?"탐색":f.i,x,ya+4)}
+else{const x=Rx-(Rx-L)*u;c.fillStyle=f.rwnd==0?"#d9534f":"#2e8b57";c.beginPath();c.roundRect?c.roundRect(x-34,yb-11,68,22,11):c.rect(x-34,yb-11,68,22);c.fill();c.fillStyle="#fff";c.font="bold 10px sans-serif";c.textAlign="center";c.fillText(`ack${f.ack} w${f.rwnd}`,x,yb+4)}c.textAlign="left"}
+const bx=600,by=100,cw=22;c.fillStyle="#333";c.font="bold 13px sans-serif";c.fillText("받는 쪽 수신 버퍼",bx,by-6);for(let i=0;i<s.B;i++){const x=bx+(i%6)*(cw+3),y=by+Math.floor(i/6)*(cw+3);c.fillStyle=i<s.buf?"#3a86ff":"#fff";c.fillRect(x,y,cw,cw);c.strokeStyle="#3a86ff";c.lineWidth=1.5;c.strokeRect(x,y,cw,cw)}
+const yy=by+Math.ceil(s.B/6)*(cw+3)+16;c.fillStyle="#333";c.font="12px sans-serif";c.fillText(`쌓인 것 ${s.buf} / 빈칸 ${s.B-s.buf}`,bx,yy);c.fillText(`앱이 읽은 양: ${s.read}칸`,bx,yy+18);c.fillStyle=+rd.value?"#2e8b57":"#d9534f";c.fillText(+rd.value?`앱: 1초에 ${rd.value}칸씩 읽는 중`:"앱: 바빠서 안 읽음!",bx,yy+36);
+c.fillStyle="#666";c.font="12px sans-serif";c.fillText(`시간 ${(s.t/1000).toFixed(1)}초 · 확인 대기 중 ${s.next-s.acked}칸`,10,292);
+g.clearRect(0,0,800,150);g.fillStyle="#333";g.font="bold 12px sans-serif";g.fillText("최근 40초",10,14);const H=s.hist,mx=Math.max(12,s.B);if(H.length>1){const t0=H[0][0],t1=Math.max(t0+40000,H[H.length-1][0]);const X=t=>40+(t-t0)/(t1-t0)*740,Y=v=>140-v/mx*115;
+[[1,"#6b4fbb","rwnd(알려 준 빈칸)"],[2,"#3a86ff","버퍼에 쌓인 양"],[3,"#e69500","확인 대기 중"]].forEach(([k,col,nm],j)=>{g.strokeStyle=col;g.lineWidth=2.5;g.beginPath();H.forEach((h,i)=>{i?g.lineTo(X(h[0]),Y(h[k])):g.moveTo(X(h[0]),Y(h[k]))});g.stroke();g.fillStyle=col;g.fillText(nm,120+j*170,14)})}
+g.strokeStyle="#ddd";g.lineWidth=1;g.beginPath();g.moveTo(40,140);g.lineTo(790,140);g.stroke();g.fillStyle="#999";g.font="10px sans-serif";g.fillText("0",28,143);g.fillText(mx,22,30)}
+function loop(n){const dt=Math.min(50,n-last);last=n;if(!paused)tick(dt);draw();requestAnimationFrame(loop)}
+rd.oninput=()=>{rv.textContent=+rd.value?`1초에 ${rd.value}칸`:"0 (앱 멈춤)";if(s)say(`앱 읽기 속도 → ${rv.textContent}`)};pa.onclick=()=>{paused=!paused;pa.textContent=paused?"계속":"일시정지"};rs.onclick=bs.onchange=reset;
+reset();rd.oninput();log.textContent="";last=performance.now();requestAnimationFrame(loop);
+</script></body></html>

@@ -1,0 +1,48 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UDP와 TCP 비교 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">13장 시뮬레이터</div><h1>UDP와 TCP: 잃어버렸을 때의 차이</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>같은 데이터 12조각을 UDP와 TCP로 동시에 보냅니다. 손실률을 정하고 [보내기]를 누르세요.</li><li>위 그림은 UDP입니다. 잃어버린 조각(✕)은 그냥 빠지고, 늦게 온 조각은 순서가 바뀐 채 앱에 바로 전달됩니다.</li><li>아래 그림은 TCP입니다. 잃어버린 조각은 다시 보내고(주황), 앱에는 반드시 번호 순서대로 줍니다. 앞 조각을 기다리느라 뒤 조각이 멈춰 있는 시간(회색 점선)을 찾아보세요.</li><li>손실률을 0%, 10%, 30%로 바꿔 가며 '끝난 시간'과 '빠진 조각'을 비교하고, 화상 통화와 파일 다운로드에는 각각 무엇이 맞을지 생각해 봅니다.</li></ol></div>
+<div class="card"><div class="row"><label>손실률 <input type="range" id="lr" min="0" max="40" value="15"> <b id="lv"></b></label><label><input type="checkbox" id="ro" checked> 가끔 순서 뒤바뀜</label><button id="go">보내기</button><button class="sec" id="ag">같은 조건으로 다시</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 400"></svg>
+<table id="tb" style="margin-top:8px"></table><div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• UDP는 보내고 끝입니다. 빠르고 단순하지만 잃어버리거나 순서가 바뀌어도 그대로 앱에 넘깁니다. 실시간 음성·영상, 게임, DNS처럼 '늦은 것보다 빠진 게 나은' 곳에 씁니다.<br>• TCP는 확인 응답(ACK)과 재전송으로 빠짐없이, 순서대로 전달합니다. 대신 하나를 잃으면 뒤 조각들이 앞 조각을 기다립니다(HOL 블로킹).<br>• 웹, 파일, 이메일처럼 한 바이트도 틀리면 안 되는 데이터는 TCP, 요즘 웹의 HTTP/3(QUIC)는 UDP 위에 필요한 신뢰성만 직접 얹습니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const N=12,D=3,RTO=7;let seed=1,R,anim=null;
+function rnd(){seed=(seed*16807)%2147483647;return(seed-1)/2147483646}
+function sim(){const p=+lr.value/100,reo=ro.checked;
+const U=[];for(let i=0;i<N;i++){const s=i*1,lost=rnd()<p,late=reo&&rnd()<.15?1.6:0;U.push({i,s,a:lost?null:s+D+late,lost,late:!!late})}
+const ud=U.filter(x=>!x.lost).sort((a,b)=>a.a-b.a);ud.forEach(x=>x.d=x.a);
+const T=[];let prev=0;for(let i=0;i<N;i++){const tries=[];let s=i*1;for(let k=0;k<8;k++){const lost=rnd()<p&&k<7,late=reo&&rnd()<.15?1.6:0;tries.push({s,lost,a:lost?null:s+D+late});if(!lost)break;s+=RTO}
+const a=tries[tries.length-1].a,d=Math.max(a,prev);prev=d;T.push({i,tries,a,d})}
+return{U,ud,T}}
+function x(t,M){return 80+t*(700/M)}
+function draw(t){const{U,ud,T}=R,M=Math.max(...T.map(z=>z.d),...ud.map(z=>z.d),N+D)+3.5;let s="";
+const lane=(y0,ttl,col)=>{s+=`<text x="10" y="${y0+16}" font-weight="700" fill="${col}">${ttl}</text><text x="10" y="${y0+44}" font-size="11" fill="#666">보냄</text><text x="10" y="${y0+108}" font-size="11" fill="#666">도착</text><text x="10" y="${y0+150}" font-size="11" fill="#666">앱에 전달</text>
+<line x1="70" y1="${y0+40}" x2="790" y2="${y0+40}" stroke="#ccc"/><line x1="70" y1="${y0+104}" x2="790" y2="${y0+104}" stroke="#ccc"/>`};
+lane(0,"UDP","#2e8b57");lane(200,"TCP","#6b4fbb");
+const box=(t0,y,n,c,f)=>`<rect x="${x(t0,M)-9}" y="${y}" width="18" height="18" rx="3" fill="${f||c}" stroke="${c}"/><text x="${x(t0,M)}" y="${y+13}" text-anchor="middle" font-size="10" font-weight="700" fill="${f?"#fff":c}">${n}</text>`;
+const fly=(s0,a,y0,c,lost,dash)=>{if(t<s0)return;const end=lost?s0+D*.55:a,tt=Math.min(t,end),u=(tt-s0)/(end-s0||1);const X2=x(s0,M)+(x(end,M)-x(s0,M))*u,Y2=y0+40+(lost?36:64)*u;
+s+=`<line x1="${x(s0,M)}" y1="${y0+40}" x2="${X2}" y2="${Y2}" stroke="${c}" stroke-width="2" ${dash?'stroke-dasharray="5 3"':""}/>`;if(lost&&t>=end)s+=`<text x="${X2}" y="${Y2+6}" text-anchor="middle" fill="#d9534f" font-size="15" font-weight="700">✕</text>`};
+U.forEach(z=>{fly(z.s,z.a,0,z.late?"#00a3a3":"#2e8b57",z.lost);if(t>=z.s)s+=`<circle cx="${x(z.s,M)}" cy="40" r="3" fill="#2e8b57"/>`});
+let px=-99;ud.forEach(z=>{const bx=Math.max(z.d,px+22/(700/M));px=bx;if(t>=z.d)s+=box(bx,136,z.i+1,z.late?"#00a3a3":"#2e8b57",z.late?"#00a3a3":"#2e8b57")});let qx=-99;
+T.forEach(z=>{z.tries.forEach((r,k)=>{fly(r.s,r.a,200,k?"#e69500":"#6b4fbb",r.lost,k>0);if(t>=r.s)s+=`<circle cx="${x(r.s,M)}" cy="240" r="3" fill="${k?"#e69500":"#6b4fbb"}"/>`});
+if(t>=z.a&&z.d>z.a+.01){const e=Math.min(t,z.d);s+=`<line x1="${x(z.a,M)}" y1="${304+(z.i%3)*5}" x2="${x(e,M)}" y2="${304+(z.i%3)*5}" stroke="#999" stroke-width="2" stroke-dasharray="2 3"/>`}
+const bx=Math.max(z.d,qx+22/(700/M));qx=bx;if(t>=z.d)s+=box(bx,336,z.i+1,"#6b4fbb","#6b4fbb")});
+s+=`<line x1="${x(Math.min(t,M),M)}" y1="24" x2="${x(Math.min(t,M),M)}" y2="390" stroke="#d9534f" stroke-width="1" opacity=".35"/>`;
+for(let k=0;k<=M;k+=5)s+=`<text x="${x(k,M)}" y="398" text-anchor="middle" font-size="10" fill="#999">${k*10}ms</text>`;
+sv.innerHTML=s}
+function stats(){const{U,ud,T}=R;const lostU=U.filter(z=>z.lost).map(z=>z.i+1),ooo=ud.some((z,k)=>k&&z.i<ud[k-1].i);const re=T.reduce((a,z)=>a+z.tries.length-1,0);
+const uEnd=ud.length?Math.max(...ud.map(z=>z.d)):0,tEnd=Math.max(...T.map(z=>z.d)),hol=T.reduce((a,z)=>a+(z.d-z.a),0);
+tb.innerHTML=`<tr><th></th><th>앱이 받은 조각</th><th>빠진 조각</th><th>순서</th><th>다시 보낸 횟수</th><th>끝난 시간</th></tr>
+<tr><td><b style="color:#2e8b57">UDP</b></td><td>${ud.length} / ${N}</td><td>${lostU.length?lostU.join(", ")+"번":"없음"}</td><td>${ooo?'<span class="bad">뒤바뀜</span>':"그대로"}</td><td>0</td><td>${Math.round(uEnd*10)}ms</td></tr>
+<tr><td><b style="color:#6b4fbb">TCP</b></td><td>${N} / ${N}</td><td>없음</td><td>항상 순서대로</td><td>${re}</td><td>${Math.round(tEnd*10)}ms</td></tr>`;
+log.textContent=`손실률 ${lr.value}% (한 조각 보내는 간격 10ms, 편도 지연 30ms, TCP 재전송 타이머 70ms)\n`+
+`UDP: ${lostU.length?`${lostU.join(", ")}번이 빠졌지만 아무도 다시 보내지 않습니다. `:"이번엔 운 좋게 다 도착했습니다. "}${ooo?"늦게 온 조각(청록)이 순서가 바뀐 채 그대로 앱에 넘어갔습니다. ":""}앱이 알아서 해야 합니다.\n`+
+`TCP: ${re?`${re}번 다시 보내 모두 받았습니다. 앞 조각을 기다리느라 이미 도착한 조각들이 멈춰 있던 시간이 합계 ${Math.round(hol*10)}ms(회색 점선, HOL 블로킹)입니다.`:"잃은 조각이 없어 UDP와 거의 같은 시간에 끝났습니다."}\n`+
+`→ 음성 통화라면 UDP: 빠진 20ms 조각은 살짝 끊길 뿐이지만, 70ms 늦게 오는 소리는 쓸모가 없습니다.\n→ 파일이라면 TCP: 한 조각이라도 빠지면 파일이 깨집니다.`}
+function play(){cancelAnimationFrame(anim);const{T,ud}=R,M=Math.max(...T.map(z=>z.d),...ud.map(z=>z.d))+1;const t0=performance.now();tb.innerHTML="";log.textContent="보내는 중…";
+const f=n=>{const t=(n-t0)/1000*8;draw(t);if(t<M)anim=requestAnimationFrame(f);else stats()};anim=requestAnimationFrame(f)}
+let base=7;go.onclick=()=>{base=Math.floor(Math.random()*1e6)+1;seed=base;R=sim();play()};ag.onclick=()=>{seed=base;R=sim();play()};
+lr.oninput=()=>lv.textContent=lr.value+"%";lr.oninput();seed=base;R=sim();draw(99);stats();
+</script></body></html>

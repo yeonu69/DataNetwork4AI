@@ -1,0 +1,44 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3-way와 4-way | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">13장 시뮬레이터</div><h1>3-way 핸드셰이크와 4-way 종료: 번호 따라가기</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>[다음 세그먼트]를 누를 때마다 클라이언트와 서버가 세그먼트를 하나씩 주고받습니다. 연결(3개) → 데이터 → 종료(4개) 순서입니다.</li><li>표에서 플래그(SYN, ACK, FIN, PSH)와 순서 번호(seq), 확인 번호(ack)가 어떻게 바뀌는지 봅니다. 시작 번호는 매번 무작위입니다.</li><li>규칙은 하나: ack = 상대가 보낸 seq + 받은 바이트 수. 단, SYN과 FIN은 데이터가 없어도 1로 셉니다.</li><li>[번호 맞히기]를 켜면 다음 세그먼트의 ack가 가려집니다. 직접 계산해 넣고 확인해 보세요.</li></ol></div>
+<div class="card"><div class="row"><button id="nx">다음 세그먼트</button><button class="sec" id="rs">처음으로 (새 시작 번호)</button><label><input type="checkbox" id="qz"> 번호 맞히기</label><span id="qbox" style="display:none">다음 ack = <input type="number" id="qa" style="width:110px"> <button class="sec" id="qc">확인</button></span></div>
+<div class="grid2"><svg class="stage" id="sv" viewBox="0 0 500 580"></svg><div><div id="now"></div><div class="log" id="log" style="margin-top:8px;max-height:330px"></div></div></div>
+<table id="tb" style="margin-top:10px"></table></div>
+<div class="key"><b>핵심 3줄</b><br>• 연결은 SYN → SYN+ACK → ACK 세 번. 서로 자기 시작 번호(ISN)를 알리고 "잘 받았다"를 확인해야 양쪽 모두 보낼 준비가 됩니다.<br>• ack 번호는 "여기까지 잘 받았고, 다음엔 이 번호를 주세요"라는 뜻입니다. SYN과 FIN은 번호 1개를 차지합니다.<br>• 종료는 양쪽이 각자 FIN을 보내고 ACK를 받아야 해서 네 번입니다. 먼저 닫은 쪽은 TIME_WAIT에서 잠시 기다렸다가 완전히 닫습니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+let X,Y,k,SEG;
+function build(){X=1000+Math.floor(Math.random()*8000);Y=3000+Math.floor(Math.random()*6000);
+// [보내는 쪽 c/s, 플래그, seq, ack, 길이, 클라 상태, 서버 상태, 설명, 단계]
+SEG=[["c","SYN",X,null,0,"SYN_SENT","SYN_RCVD",`클라이언트: "연결하자. 내 시작 번호는 ${X}야." SYN은 데이터가 없지만 번호 1개를 씁니다.`,"연결"],
+["s","SYN, ACK",Y,X+1,0,"SYN_SENT","SYN_RCVD",`서버: "${X}번 SYN 잘 받았어(ack=${X}+1=${X+1}). 내 시작 번호는 ${Y}야."`,"연결"],
+["c","ACK",X+1,Y+1,0,"ESTABLISHED","ESTABLISHED",`클라이언트: "네 SYN도 받았어(ack=${Y}+1=${Y+1})." 이제 양쪽 모두 ESTABLISHED.`,"연결"],
+["c","PSH, ACK",X+1,Y+1,100,"ESTABLISHED","ESTABLISHED",`클라이언트: 요청 100바이트("GET / HTTP/1.1…") 전송. seq=${X+1}부터 ${X+100}까지 100바이트.`,"데이터"],
+["s","PSH, ACK",Y+1,X+101,300,"ESTABLISHED","ESTABLISHED",`서버: "${X+100}까지 받았어(ack=${X+1}+100=${X+101})." 응답 300바이트를 함께 실어 보냄.`,"데이터"],
+["c","ACK",X+101,Y+301,0,"ESTABLISHED","ESTABLISHED",`클라이언트: "응답 300바이트 잘 받았어(ack=${Y+1}+300=${Y+301})."`,"데이터"],
+["c","FIN, ACK",X+101,Y+301,0,"FIN_WAIT_1","CLOSE_WAIT",`클라이언트: "나는 더 보낼 게 없어." FIN도 번호 1개를 씁니다.`,"종료"],
+["s","ACK",Y+301,X+102,0,"FIN_WAIT_2","CLOSE_WAIT",`서버: "네 FIN 받았어(ack=${X+101}+1=${X+102})." 서버는 아직 보낼 게 남았으면 더 보낼 수 있습니다(반쯤 닫힘).`,"종료"],
+["s","FIN, ACK",Y+301,X+102,0,"FIN_WAIT_2","LAST_ACK",`서버: 프로그램이 close()를 부름 → "나도 끝."`,"종료"],
+["c","ACK",X+102,Y+302,0,"TIME_WAIT","CLOSED",`클라이언트: "네 FIN도 받았어(ack=${Y+302})." 서버는 바로 CLOSED. 클라이언트는 마지막 ACK가 사라졌을 때를 대비해 TIME_WAIT(보통 수십 초~2분) 동안 기다립니다.`,"종료"]];
+k=0;log.textContent=`시작 번호(ISN): 클라이언트 ${X}, 서버 ${Y}  (보안을 위해 매번 무작위)\n`;draw()}
+const COL={"연결":"#6b4fbb","데이터":"#2e8b57","종료":"#e6457a"};
+function draw(){const qzOn=qz.checked&&k<SEG.length;let s=`<text x="80" y="20" text-anchor="middle" font-weight="700">클라이언트</text><text x="420" y="20" text-anchor="middle" font-weight="700">서버</text><line x1="80" y1="30" x2="80" y2="570" stroke="#bbb" stroke-dasharray="4 4"/><line x1="420" y1="30" x2="420" y2="570" stroke="#bbb" stroke-dasharray="4 4"/>`;
+let cst="CLOSED",sst="LISTEN";
+for(let i=0;i<k;i++){const[w,f,sq,ak,len,cs,ss,,ph]=SEG[i],y=62+i*50,c=COL[ph],L=w=="c";const x1=L?80:420,x2=L?412:88;
+s+=`<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y+20}" stroke="${c}" stroke-width="${i==k-1?3.5:2}"/><path d="M${x2} ${y+20} l${L?-11:11} -8 l0 10z" fill="${c}"/>`+
+`<text x="250" y="${y-6}" text-anchor="middle" font-size="12" font-weight="700" fill="${c}">${f}${len?` (${len}B)`:""}</text><text x="250" y="${y+30}" text-anchor="middle" font-size="11" fill="#333" font-family="monospace">seq=${sq}${ak!=null?" ack="+ak:""}</text>`;
+if(cs!=cst){s+=`<text x="74" y="${y+28}" text-anchor="end" font-size="10" fill="#6b4fbb">${cs}</text>`;cst=cs}
+if(ss!=sst){s+=`<text x="426" y="${y+28}" font-size="10" fill="#6b4fbb">${ss}</text>`;sst=ss}}
+if(k==0)s+=`<text x="426" y="44" font-size="10" fill="#6b4fbb">LISTEN</text><text x="74" y="44" text-anchor="end" font-size="10" fill="#6b4fbb">CLOSED</text>`;
+if(k==SEG.length)s+=`<text x="74" y="${62+k*50+10}" text-anchor="end" font-size="10" fill="#999">… CLOSED</text>`;
+if(qzOn){const[w,f,sq]=SEG[k],y=62+k*50,L=w=="c";s+=`<line x1="${L?80:420}" y1="${y}" x2="${L?412:88}" y2="${y+20}" stroke="#ccc" stroke-width="2" stroke-dasharray="4 4"/><text x="250" y="${y-6}" text-anchor="middle" font-size="12" fill="#999">${f}</text><text x="250" y="${y+30}" text-anchor="middle" font-size="11" fill="#999" font-family="monospace">seq=${sq}${SEG[k][3]!=null?" ack=?":""}</text>`}
+sv.innerHTML=s;
+tb.innerHTML="<tr><th>#</th><th>방향</th><th>단계</th><th>플래그</th><th>seq</th><th>ack</th><th>데이터</th><th>클라이언트 상태</th><th>서버 상태</th></tr>"+SEG.slice(0,k).map(([w,f,sq,ak,len,cs,ss,,ph],i)=>`<tr${i==k-1?' class="hl"':""}><td>${i+1}</td><td>${w=="c"?"클라 → 서버":"서버 → 클라"}</td><td style="color:${COL[ph]}">${ph}</td><td>${f}</td><td class="mono">${sq}</td><td class="mono">${ak??"-"}</td><td>${len?len+"B":"-"}</td><td>${cs}</td><td>${ss}</td></tr>`).join("");
+const c=k?SEG[k-1]:null;now.innerHTML=`<div class="big" style="font-size:18px">${k?`${k}번째: ${c[1]}`:"준비"}</div><p class="mut">${k?c[7]:"클라이언트는 CLOSED, 서버는 listen()을 불러 LISTEN 상태로 기다립니다."}</p>`;
+qbox.style.display=qzOn&&SEG[k][3]!=null?"":"none";nx.disabled=k>=SEG.length}
+function advance(){if(k>=SEG.length)return;log.textContent+=`${k+1}. ${SEG[k][0]=="c"?"클라→서버":"서버→클라"} ${SEG[k][1]} seq=${SEG[k][2]}${SEG[k][3]!=null?" ack="+SEG[k][3]:""}\n`;log.scrollTop=1e9;k++;qa.value="";draw()}
+nx.onclick=()=>{if(qz.checked&&k<SEG.length&&SEG[k][3]!=null){if(qa.value===""){log.textContent+="→ 먼저 ack 번호를 계산해 넣어 보세요. (힌트: 상대가 마지막으로 보낸 seq + 길이, SYN/FIN이면 +1)\n";log.scrollTop=1e9;return}chk();return}advance()};
+function chk(){const want=SEG[k][3],got=+qa.value;if(got==want){log.textContent+=`✅ 정답! ack=${want}\n`;advance()}else{log.textContent+=`❌ ${got}가 아닙니다. 상대가 마지막으로 보낸 세그먼트의 seq와 길이(SYN·FIN은 1)를 다시 보세요.\n`;log.scrollTop=1e9}}
+qc.onclick=chk;qa.onkeydown=e=>{if(e.key=="Enter")chk()};qz.onchange=draw;rs.onclick=build;build();
+</script></body></html>

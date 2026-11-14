@@ -1,0 +1,38 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>꼬리 지연 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">13장 시뮬레이터</div><h1>꼬리 지연: 가장 느린 하나가 전체를 기다리게 한다</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>AI 학습에서는 GPU 여러 대가 한 단계를 끝낼 때마다 서로 결과를 맞춰야(동기화) 다음 단계로 갑니다. 즉, 한 단계 시간 = 가장 늦게 끝난 GPU의 시간입니다.</li><li>GPU 한 대의 통신은 보통 100ms면 끝나지만, 아주 가끔(예: 1%) 패킷 손실·재전송 때문에 훨씬 늦어집니다. [1단계 실행]을 눌러 막대를 보세요.</li><li>GPU 수를 8 → 64 → 1024로 늘려 [100단계 실행]을 누릅니다. 'GPU 한 대' 평균은 그대로인데 '한 단계' 평균이 얼마나 커지는지 비교합니다.</li><li>[느린 링크 점검·교체]를 켜서 느려질 확률을 10분의 1로 줄이면 무엇이 달라지는지 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>GPU 수 <select id="ng"><option>8</option><option selected>64</option><option>256</option><option>1024</option><option>4096</option></select></label><label>한 대가 느려질 확률 <select id="pp"><option value=".001">0.1%</option><option value=".01" selected>1%</option><option value=".05">5%</option></select></label><label><input type="checkbox" id="fx"> 느린 링크 점검·교체 (확률 ÷10)</label></div>
+<div class="row"><button id="one">1단계 실행</button><button class="sec" id="hun">100단계 실행</button><button class="sec" id="rs">기록 지우기</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 250"></svg>
+<div class="grid2" style="margin-top:8px"><canvas id="hc" width="400" height="200"></canvas><div id="st"></div></div>
+<div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 꼬리 지연(tail latency)은 평균이 아니라 가장 느린 몇 %(P99 등)의 지연입니다. 혼자 쓸 때는 드물어서 눈에 잘 띄지 않습니다.<br>• 그러나 N대가 서로 기다리는 일에서는 "한 대라도 느릴 확률" = 1 − (1 − p)ᴺ 이 빠르게 1에 가까워집니다. 1%짜리 느림도 1000대면 거의 매 단계 일어납니다.<br>• 그래서 AI 데이터센터 네트워크는 평균 속도보다 손실 없는 전송(PFC·ECN), 고른 경로(ECMP·레일), 느린 부품 빨리 찾기에 공을 들입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+let one_=[],step_=[],lastRun=null;
+const P=()=>+pp.value/(fx.checked?10:1);
+function sample(){const base=95+Math.random()*10;return Math.random()<P()?base+120+(-Math.log(1-Math.random()))*150:base}
+function run(){const n=+ng.value,t=[];let mx=0,mi=0;for(let i=0;i<n;i++){const v=sample();t.push(v);if(v>mx){mx=v;mi=i}}one_.push(...t.slice(0,64));if(one_.length>20000)one_=one_.slice(-20000);step_.push(mx);return{t,mx,mi}}
+function drawBars(r){const n=r.t.length,show=Math.min(n,64),W=700/show;let s="";const top=Math.max(450,r.mx*1.05),Y=v=>220-v/top*190;
+let idx=[...Array(show).keys()];if(r.mi>=show)idx[show-1]=r.mi;
+idx.forEach((i,k)=>{const v=r.t[i],x=70+k*W,slow=v>200;s+=`<rect x="${x+1}" y="${Y(v)}" width="${Math.max(W-2,1)}" height="${220-Y(v)}" fill="${i==r.mi?"#d9534f":slow?"#e69500":"#9b86d9"}"/>`+(r.mx-v>5?`<rect x="${x+1}" y="${Y(r.mx)}" width="${Math.max(W-2,1)}" height="${Y(v)-Y(r.mx)}" fill="#eee"/>`:"")});
+s+=`<line x1="66" y1="${Y(r.mx)}" x2="780" y2="${Y(r.mx)}" stroke="#d9534f" stroke-dasharray="5 3" stroke-width="2"/><text x="780" y="${Y(r.mx)-6}" text-anchor="end" fill="#d9534f" font-size="12" font-weight="700">이 단계 시간 = 가장 느린 GPU = ${r.mx.toFixed(0)}ms</text>`;
+for(const v of [0,100,200,300,400])if(v<top)s+=`<text x="60" y="${Y(v)+4}" text-anchor="end" font-size="10" fill="#999">${v}ms</text><line x1="66" y1="${Y(v)}" x2="70" y2="${Y(v)}" stroke="#999"/>`;
+s+=`<text x="70" y="240" font-size="11" fill="#666">GPU ${n}대${n>show?` 중 ${show}대만 표시 (가장 느린 GPU는 맨 오른쪽에 포함)`:""} · 회색 = 다른 GPU를 기다리며 노는 시간</text>`;sv.innerHTML=s}
+function top1(){const b=[...one_].sort((x,y)=>y-x),k=Math.max(1,Math.floor(b.length/100));return b.slice(0,k).reduce((a,c)=>a+c,0)/k}
+function pct(a,q){const b=[...a].sort((x,y)=>x-y);return b[Math.min(b.length-1,Math.floor(q*b.length))]}
+function hist(){const ctx=hc.getContext("2d");ctx.clearRect(0,0,400,200);const bins=Array(20).fill(0),bins2=Array(20).fill(0),bw=40;one_.forEach(v=>bins[Math.min(19,Math.floor(v/bw))]++);step_.forEach(v=>bins2[Math.min(19,Math.floor(v/bw))]++);
+const n1=one_.length||1,n2=step_.length||1,mx=Math.max(...bins.map(b=>b/n1),...bins2.map(b=>b/n2),.01);
+for(let i=0;i<20;i++){const h1=bins[i]/n1/mx*150,h2=bins2[i]/n2/mx*150,x=20+i*18.5;ctx.fillStyle="#9b86d9";ctx.fillRect(x,170-h1,8,h1);ctx.fillStyle="#d9534f";ctx.fillRect(x+8,170-h2,8,h2)}
+ctx.fillStyle="#333";ctx.font="bold 12px sans-serif";ctx.fillText("시간 분포",8,14);ctx.font="11px sans-serif";ctx.fillStyle="#9b86d9";ctx.fillText("■ GPU 한 대",90,14);ctx.fillStyle="#d9534f";ctx.fillText("■ 한 단계(가장 느린 것)",170,14);
+ctx.fillStyle="#999";ctx.font="10px sans-serif";[0,200,400,600].forEach(v=>ctx.fillText(v+"ms",20+v/bw*18.5,186));ctx.fillText("800+",355,186);ctx.strokeStyle="#ccc";ctx.beginPath();ctx.moveTo(18,170);ctx.lineTo(395,170);ctx.stroke()}
+function stats(){if(!step_.length){st.innerHTML='<p class="mut">아직 실행 기록이 없습니다.</p>';return}const n=+ng.value,p=P(),pr=1-Math.pow(1-p,n),avg1=one_.reduce((a,b)=>a+b,0)/one_.length,avgS=step_.reduce((a,b)=>a+b,0)/step_.length;
+st.innerHTML=`<table><tr><th>GPU 한 대 평균</th><td>${avg1.toFixed(0)}ms</td></tr><tr><th>GPU 한 대 중간값 / 가장 느린 1%</th><td>${pct(one_,.5).toFixed(0)}ms / ${top1().toFixed(0)}ms</td></tr><tr><th>한 단계 평균</th><td><b class="bad">${avgS.toFixed(0)}ms</b> (${step_.length}단계)</td></tr>
+<tr><th>한 대라도 느릴 확률<br><span class="mut">1 − (1 − ${(p*100).toFixed(2)}%)<sup>${n}</sup></span></th><td><b>${(pr*100).toFixed(1)}%</b></td></tr><tr><th>노는 시간 비율</th><td>${(100*(1-avg1/avgS)).toFixed(0)}% <span class="mut">(GPU가 남을 기다린 시간)</span></td></tr></table>`}
+function after(r,k){drawBars(r);hist();stats();const n=+ng.value,p=P();log.textContent=k==1?`GPU ${n}대 한 단계: 가장 느린 GPU ${r.mi}번이 ${r.mx.toFixed(0)}ms. ${r.mx>200?`이 한 대 때문에 나머지 ${n-1}대가 기다렸습니다.`:"이번엔 모두 고르게 끝났습니다."}`:
+`${k}단계 실행. GPU ${n}대, 한 대가 느려질 확률 ${(p*100).toFixed(2)}% → 매 단계 누군가 느릴 확률 ${(100*(1-Math.pow(1-p,n))).toFixed(1)}%.\n${n>=256&&p>=.01?"GPU가 많으면 '드문 느림'이 '매번 느림'이 됩니다. 학습 전체가 가장 나쁜 꼬리에 맞춰 느려집니다.":n<=8?"GPU가 적으면 느린 단계는 드뭅니다. GPU 수를 늘려 비교해 보세요.":"GPU 수나 확률을 바꿔 다시 비교해 보세요."}`;lastRun=r}
+one.onclick=()=>after(run(),1);hun.onclick=()=>{let r;for(let i=0;i<100;i++)r=run();after(r,100)};
+rs.onclick=ng.onchange=pp.onchange=fx.onchange=()=>{one_=[];step_=[];sv.innerHTML="";hist();stats();log.textContent="조건이 바뀌어 기록을 지웠습니다. [1단계 실행]이나 [100단계 실행]을 누르세요."};
+hist();stats();after(run(),1);
+</script></body></html>

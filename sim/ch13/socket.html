@@ -1,0 +1,62 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>소켓 프로그래밍 모의실습 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css">
+<style>main{max-width:1100px}
+.code{font-family:"DejaVu Sans Mono",Consolas,monospace;font-size:12.5px;background:#1f1b2e;color:#e8e3ff;border-radius:10px;padding:8px 0;margin:6px 0;overflow-x:auto}
+.code div{padding:2px 10px;white-space:pre;border-left:4px solid transparent}.code div.done{color:#8f86ad}.code div.cur{background:#3a3260;border-left-color:#ffd54a;color:#fff}.code div.blk{background:#5a3d14;border-left-color:#e69500;color:#fff}
+.code div .ln{display:inline-block;width:22px;color:#6f6790}
+.st{display:inline-block;padding:2px 10px;border-radius:99px;background:#ece6fb;color:var(--p);font-weight:700;font-size:13px}
+.side h2{margin-bottom:2px}.term{font-family:monospace;font-size:12px;background:#000;color:#9f9;border-radius:8px;padding:6px 8px;min-height:44px;white-space:pre-wrap}
+.seq{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fbfaff}</style></head><body>
+<header><div class="ch">13장 시뮬레이터</div><h1>소켓 프로그래밍 모의실습 (파이썬 · 윈도우 소켓)</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>왼쪽은 클라이언트, 오른쪽은 서버 프로그램입니다. 각자의 [다음 줄 실행]을 눌러 코드를 한 줄씩 실행합니다. 노란 줄이 다음에 실행할 줄입니다.</li><li>먼저 서버를 socket → bind → listen → accept까지 실행해 보세요. accept는 손님이 올 때까지 멈춰 기다립니다(주황, 블로킹).</li><li>그다음 클라이언트를 실행하면 connect에서 SYN·SYN-ACK·ACK(3-way 핸드셰이크)가 가운데 그림에 그려지고, 멈춰 있던 서버의 accept가 깨어납니다. send/recv로 "hello"가 "HELLO"가 되어 돌아오는 것을 확인합니다.</li><li>[처음으로] 후 클라이언트부터 실행하면 무슨 일이 생기는지, 언어를 'C (윈도우 소켓)'로, 방식을 UDP로 바꾸면 무엇이 달라지는지도 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><label>언어 <select id="lg"><option value="py">파이썬</option><option value="c">C (윈도우 소켓, Winsock)</option></select></label><label>방식 <select id="pr"><option value="tcp">TCP (SOCK_STREAM)</option><option value="udp">UDP (SOCK_DGRAM)</option></select></label><button class="sec" id="rs">처음으로</button><button class="sec" id="demo">자동 시연</button></div></div>
+<div class="grid2"><div class="card side"><h2>클라이언트 192.168.0.23</h2><div>소켓 상태 <span class="st" id="cs"></span> <span class="mut" id="cb"></span></div><div class="code" id="cc"></div><button id="cn">클라이언트 다음 줄 실행</button><div class="term" id="ct" style="margin-top:6px"></div></div>
+<div class="card side"><h2>서버 192.168.0.10:9000</h2><div>소켓 상태 <span class="st" id="ss"></span> <span class="mut" id="sb"></span></div><div class="code" id="sc"></div><button id="sn">서버 다음 줄 실행</button><div class="term" id="stt" style="margin-top:6px"></div></div></div>
+<div class="card"><h2>네트워크에서 오간 것</h2><div class="seq"><svg id="sq" viewBox="0 0 800 60" style="width:100%;display:block"></svg></div><div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 서버는 socket → bind(포트 정하기) → listen(대기) → accept(손님 받기), 클라이언트는 socket → connect 순서입니다. 그다음은 양쪽 모두 send/recv, 끝나면 close입니다.<br>• connect 한 줄이 3-way 핸드셰이크를, close가 FIN 교환을 일으킵니다. accept와 recv는 상대가 올 때까지 멈춰 기다리는(블로킹) 함수입니다.<br>• 윈도우 소켓(Winsock)도 함수 이름과 순서가 같고 WSAStartup/WSACleanup, closesocket만 더 붙습니다. 파이썬 socket 모듈은 윈도우에서 실제로 Winsock 위에서 동작합니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const CODE={py:{tcp:{S:[["import socket","nop"],["srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)","socket"],["srv.bind((\"0.0.0.0\", 9000))","bind"],["srv.listen(5)","listen"],["conn, addr = srv.accept()","accept"],["data = conn.recv(1024)","recv"],["conn.sendall(data.upper())","send"],["conn.close()","close"],["srv.close()","lclose"]],
+C:[["import socket","nop"],["cli = socket.socket(socket.AF_INET, socket.SOCK_STREAM)","socket"],["cli.connect((\"192.168.0.10\", 9000))","connect"],["cli.sendall(b\"hello\")","send"],["reply = cli.recv(1024)","recv"],["print(reply)","print"],["cli.close()","close"]]},
+udp:{S:[["import socket","nop"],["srv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)","socket"],["srv.bind((\"0.0.0.0\", 9000))","bind"],["data, addr = srv.recvfrom(1024)","urecv"],["srv.sendto(data.upper(), addr)","usend"],["srv.close()","uclose"]],
+C:[["import socket","nop"],["cli = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)","socket"],["cli.sendto(b\"hello\", (\"192.168.0.10\", 9000))","usend"],["reply, addr = cli.recvfrom(1024)","urecv"],["print(reply)","print"],["cli.close()","uclose"]]}},
+c:{tcp:{S:[["WSAStartup(MAKEWORD(2,2), &wsa);   // 윈도우 소켓 준비","nop"],["SOCKET srv = socket(AF_INET, SOCK_STREAM, 0);","socket"],["bind(srv, (SOCKADDR*)&addr, sizeof(addr));   // 포트 9000","bind"],["listen(srv, 5);","listen"],["SOCKET conn = accept(srv, NULL, NULL);","accept"],["int n = recv(conn, buf, 1024, 0);","recv"],["send(conn, to_upper(buf), n, 0);","send"],["closesocket(conn);","close"],["closesocket(srv); WSACleanup();","lclose"]],
+C:[["WSAStartup(MAKEWORD(2,2), &wsa);   // 윈도우 소켓 준비","nop"],["SOCKET cli = socket(AF_INET, SOCK_STREAM, 0);","socket"],["connect(cli, (SOCKADDR*)&srvAddr, sizeof(srvAddr));","connect"],["send(cli, \"hello\", 5, 0);","send"],["int n = recv(cli, buf, 1024, 0);","recv"],["printf(\"%.*s\\n\", n, buf);","print"],["closesocket(cli); WSACleanup();","close"]]},
+udp:{S:[["WSAStartup(MAKEWORD(2,2), &wsa);","nop"],["SOCKET srv = socket(AF_INET, SOCK_DGRAM, 0);","socket"],["bind(srv, (SOCKADDR*)&addr, sizeof(addr));   // 포트 9000","bind"],["int n = recvfrom(srv, buf, 1024, 0, (SOCKADDR*)&from, &len);","urecv"],["sendto(srv, to_upper(buf), n, 0, (SOCKADDR*)&from, len);","usend"],["closesocket(srv); WSACleanup();","uclose"]],
+C:[["WSAStartup(MAKEWORD(2,2), &wsa);","nop"],["SOCKET cli = socket(AF_INET, SOCK_DGRAM, 0);","socket"],["sendto(cli, \"hello\", 5, 0, (SOCKADDR*)&srvAddr, sizeof(srvAddr));","usend"],["int n = recvfrom(cli, buf, 1024, 0, NULL, NULL);","urecv"],["printf(\"%.*s\\n\", n, buf);","print"],["closesocket(cli); WSACleanup();","uclose"]]}}};
+let A,B,arrows,auto=null;
+function reset(){clearInterval(auto);auto=null;const c=CODE[lg.value][pr.value];
+A={nm:"클라이언트",code:c.C,pc:0,blk:false,sock:false,bound:false,st:"(소켓 없음)",buf:[],eof:false,out:"",port:51544,listening:false,pending:false,conn:false};
+B={nm:"서버",code:c.S,pc:0,blk:false,sock:false,bound:false,st:"(소켓 없음)",buf:[],eof:false,out:"",port:9000,listening:false,pending:false,conn:false};arrows=[];log.textContent="";render()}
+const isPy=()=>lg.value=="py";
+function arrow(fromCli,txt,col,lost){arrows.push([fromCli,txt,col||"#6b4fbb",lost])}
+function say(m){log.textContent+=m+"\n";log.scrollTop=1e9}
+function exec(X,Y){if(X.pc>=X.code.length)return false;const[line,act]=X.code[X.pc];const tcp=pr.value=="tcp",me=X===A;let adv=true,blk=false;
+switch(act){case"nop":say(`${X.nm}: ${isPy()?"socket 모듈 불러오기":"WSAStartup으로 윈도우 소켓 라이브러리 준비 (윈도우에서만 필요)"}`);break;
+case"socket":X.sock=true;X.st=tcp?"CLOSED":"생성됨";say(`${X.nm}: 소켓 생성 (${tcp?"TCP: SOCK_STREAM":"UDP: SOCK_DGRAM"}). 아직 아무 패킷도 나가지 않습니다.`);break;
+case"bind":X.bound=true;X.st=tcp?"CLOSED (포트 9000에 묶임)":"포트 9000에 묶임";say(`${X.nm}: bind → 이 소켓을 포트 9000번에 묶음. 이제 9000번으로 오는 것은 이 프로그램 몫입니다.`);break;
+case"listen":X.listening=true;X.st="LISTEN";say(`${X.nm}: listen → 연결 요청을 받을 준비 완료(LISTEN). 대기열 크기 5.`);break;
+case"accept":if(X.pending){X.pending=false;X.conn=true;X.st="ESTABLISHED";say(`${X.nm}: accept 반환! 대기열의 연결을 꺼내 통신용 새 소켓(conn)을 받음. 상대 = 192.168.0.23:51544`)}else{blk=true;adv=false;X.st="LISTEN (accept에서 대기 중)"}break;
+case"connect":if(B.listening&&B.sock){arrow(true,"SYN  seq=0");arrow(false,"SYN, ACK  seq=0 ack=1");arrow(true,"ACK  ack=1");X.conn=true;X.st="ESTABLISHED";B.pending=true;say(`${X.nm}: connect → 운영체제가 3-way 핸드셰이크를 대신 수행 → ESTABLISHED.\n  (서버 프로그램이 accept를 부르기 전이라도, 서버 운영체제가 연결을 받아 대기열에 넣어 둡니다)`)}
+else{arrow(true,"SYN  seq=0");arrow(false,"RST, ACK  (아무도 9000번에서 기다리지 않음)","#d9534f");adv=false;X.out+=isPy()?"ConnectionRefusedError: [WinError 10061] 대상 컴퓨터에서 연결을 거부했으므로 연결하지 못했습니다\n":"connect() 실패: WSAGetLastError() = 10061 (WSAECONNREFUSED)\n";say(`${X.nm}: connect 실패! 서버가 아직 listen 하지 않았습니다. 서버를 먼저 준비한 뒤 다시 실행하세요.`)}break;
+case"send":{if(!X.conn){say(`${X.nm}: 연결이 없어 보낼 수 없습니다.`);adv=false;break}const d=me?"hello":"HELLO";arrow(me,`PSH, ACK  데이터 "${d}" (${d.length}바이트)`,"#2e8b57");arrow(!me,"ACK","#999");Y.buf.push(d);say(`${X.nm}: send("${d}") → 운영체제 송신 버퍼로 복사 → TCP 세그먼트로 전송. 상대의 수신 버퍼에 쌓임.`);break}
+case"recv":if(X.buf.length){const d=X.buf.shift();X.got=d;say(`${X.nm}: recv → 수신 버퍼에서 "${d}"를 꺼냄`)}else if(X.eof){X.got="";say(`${X.nm}: recv가 빈 값(b'')을 반환 → 상대가 연결을 닫았다는 뜻`)}else{blk=true;adv=false}break;
+case"print":X.out+=isPy()?`b'${A.got||""}'\n`:`${A.got||""}\n`;say(`${X.nm}: 받은 응답 출력`);break;
+case"close":if(X.conn){const second=X.st=="CLOSE_WAIT";arrow(me,"FIN, ACK","#e6457a");arrow(!me,"ACK","#999");Y.eof=true;
+if(second){X.st="LAST_ACK → CLOSED";Y.st="TIME_WAIT (잠시 후 CLOSED)";say(`${X.nm}: close → 나도 FIN 전송. 상대는 TIME_WAIT에서 잠시 기다렸다가 완전히 정리.`)}else{X.st="FIN_WAIT_2";Y.st="CLOSE_WAIT";say(`${X.nm}: close → FIN 전송(4-way 종료 시작). 상대는 CLOSE_WAIT: "저쪽은 다 보냈구나". 상대도 close 해야 끝납니다.`)}X.conn=false}else{X.st="CLOSED";say(`${X.nm}: 소켓 닫기`)}break;
+case"lclose":X.listening=false;if(X.st=="LISTEN")X.st="CLOSED";say(`${X.nm}: 대기용 소켓(srv)도 닫음. 이제 9000번은 비었습니다.`+(isPy()?"":" WSACleanup으로 윈도우 소켓 정리."));break;
+case"usend":{const d=me?"hello":"HELLO";const ok=me?(B.bound&&B.sock):A.sock;arrow(me,`UDP 데이터그램 "${d}"  (핸드셰이크 없이 바로)`,"#2e8b57");
+if(ok){Y.buf.push(d);say(`${X.nm}: sendto → 연결 과정 없이 데이터그램 하나를 바로 보냄.`)}else{arrows[arrows.length-1][3]=true;arrow(!me,"ICMP 포트 도달 불가","#d9534f");say(`${X.nm}: sendto는 '성공'했지만, 9000번을 연 프로그램이 없어 데이터가 버려졌습니다. UDP는 이 사실을 알려 주지 않습니다(전달 보장 없음).`)}break}
+case"urecv":if(X.buf.length){X.got=X.buf.shift();say(`${X.nm}: recvfrom → "${X.got}"와 보낸 사람 주소를 받음`)}else{blk=true;adv=false}break;
+case"uclose":X.st="닫힘";say(`${X.nm}: 소켓 닫기 (UDP는 FIN 같은 종료 인사가 없음)`);break}
+X.blk=blk;if(blk&&!X._bs){say(`${X.nm}: ${act=="accept"?"accept":"recv"}에서 멈춤… 상대가 ${act=="accept"?"연결해":"데이터를 보내"} 올 때까지 기다립니다(블로킹).`)}X._bs=blk;if(adv)X.pc++;return adv}
+function step(X,Y){exec(X,Y);if(Y.blk)exec(Y,X);render()}
+function codeHTML(X){return X.code.map(([l],i)=>`<div class="${i<X.pc?"done":i==X.pc?(X.blk?"blk":"cur"):""}"><span class="ln">${i+1}</span>${l.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</div>`).join("")+(X.pc>=X.code.length?'<div class="done"><span class="ln"></span>// 프로그램 끝</div>':"")}
+function render(){cc.innerHTML=codeHTML(A);sc.innerHTML=codeHTML(B);cs.textContent=A.st;ss.textContent=B.st;cb.textContent=A.buf.length?`수신 버퍼: ${A.buf.join(",")}`:"";sb.textContent=B.buf.length?`수신 버퍼: ${B.buf.join(",")}`:"";
+ct.textContent="C:\\> 클라이언트 출력\n"+A.out;stt.textContent="C:\\> 서버 출력\n"+B.out;cn.disabled=A.pc>=A.code.length;sn.disabled=B.pc>=B.code.length;
+const H=50+arrows.length*34;let s=`<text x="120" y="20" text-anchor="middle" font-weight="700" font-size="13">클라이언트 :51544</text><text x="680" y="20" text-anchor="middle" font-weight="700" font-size="13">서버 :9000</text><line x1="120" y1="28" x2="120" y2="${H}" stroke="#ccc" stroke-dasharray="4 4"/><line x1="680" y1="28" x2="680" y2="${H}" stroke="#ccc" stroke-dasharray="4 4"/>`;
+arrows.forEach(([fc,t,c,lost],i)=>{const y=50+i*34,x1=fc?120:680,x2=fc?(lost?560:672):128;s+=`<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y+10}" stroke="${c}" stroke-width="2.5"/>`+(lost?`<text x="${x2+6}" y="${y+16}" fill="#d9534f" font-size="16">✕</text>`:`<path d="M${x2} ${y+10} l${fc?-11:11} -7 l0 10z" fill="${c}"/>`)+`<text x="400" y="${y}" text-anchor="middle" font-size="12" fill="${c}">${t}</text>`});
+sq.setAttribute("viewBox",`0 0 800 ${Math.max(60,H)}`);sq.innerHTML=s;sq.parentNode.scrollTop=1e9}
+cn.onclick=()=>step(A,B);sn.onclick=()=>step(B,A);rs.onclick=reset;lg.onchange=reset;pr.onchange=reset;
+demo.onclick=()=>{reset();const tcp=pr.value=="tcp";const seq=tcp?"SSSSSCCCSCCSCCSS":"SSSSCCCCSCCS";let i=0;auto=setInterval(()=>{if(i>=seq.length){clearInterval(auto);auto=null;return}seq[i++]=="S"?step(B,A):step(A,B)},700)};reset();
+</script></body></html>
