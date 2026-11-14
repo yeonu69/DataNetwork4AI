@@ -10,7 +10,7 @@
 <div class="log" id="log" style="margin-top:8px"></div></div>
 
 <div class="key"><b>핵심 3줄</b><br>• NAT는 사설 IP를 공인 IP 하나로 바꿔서 여러 기기가 인터넷을 함께 쓰게 합니다.<br>• 공유기는 포트 번호까지 바꿔(PAT) 누가 보낸 요청인지 NAT 표로 기억하고, 응답이 오면 표를 보고 되돌려 줍니다.<br>• 표에 없는 바깥 요청은 갈 곳을 몰라 버려지므로, 집 안 서버를 열려면 포트 포워딩을 따로 설정해야 합니다.</div>
-</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
 <script>const PCs=[["PC-A","192.168.0.23"],["PC-B","192.168.0.50"],["스마트폰","192.168.0.77"]],SV=[["93.184.215.14",443],["8.8.8.8",53]],PUB="211.36.140.5";
 let T=[],nextPort=40001;
 function tbl(hi=-1){tb.innerHTML="<tr><th>안쪽(사설 IP:포트)</th><th>바깥(공인 IP:포트)</th><th>상대 서버</th></tr>"+(T.length?T.map((r,i)=>`<tr${i==hi?' class="hl"':''}><td class="mono">${r.in}</td><td class="mono">${r.out}</td><td class="mono">${r.dst}</td></tr>`).join(''):'<tr><td colspan=3 class="mut">(비어 있음)</td></tr>')}

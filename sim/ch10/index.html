@@ -7,7 +7,7 @@
 <div class="log" id="out">$ traceroute 8.8.8.8</div></div>
 
 <div class="key"><b>핵심 3줄</b><br>• TTL은 라우터를 지날 때마다 1씩 줄고, 0이 되면 패킷을 버리고 보낸 쪽에 ICMP Time Exceeded를 보냅니다.<br>• traceroute는 TTL을 1, 2, 3…으로 늘려 보내면서 이 오류 메시지를 모아 경로를 알아냅니다.<br>• 보안 설정으로 ICMP에 답하지 않는 라우터는 * * * 로 표시되며, 경로가 끊긴 것은 아닙니다.</div>
-</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
 <script>const H=[["내 PC","192.168.0.23",0],["공유기","192.168.0.1",1.2],["ISP","10.0.12.2",4.8],["백본","10.0.23.2",9.6],["교환점","203.0.113.1",14.1],["목적지","8.8.8.8",18.3]];
 let ttl=0,busy=false,done=false;const st=document.getElementById('st'),X=i=>60+i*128;
 function draw(){let s="";for(let i=0;i<H.length-1;i++)s+=`<line x1="${X(i)}" y1="90" x2="${X(i+1)}" y2="90" stroke="#cfc6ea" stroke-width="4"/>`;

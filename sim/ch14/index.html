@@ -9,7 +9,7 @@
 <b>리졸버 캐시</b><div style="overflow-x:auto"><table id="cache"></table></div></div>
 
 <div class="key"><b>핵심 3줄</b><br>• DNS는 이름을 IP 주소로 바꿔 주는 분산 전화번호부로, 루트 → TLD → 권한 서버 순서로 찾아갑니다.<br>• PC는 리졸버(예: 168.126.63.1)에 한 번만 묻고, 리졸버가 대신 여러 서버를 돌아다닙니다(재귀 질의).<br>• 답은 TTL 동안 캐시에 남으므로, 두 번째부터는 몇 ms 만에 답이 옵니다.</div>
-</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
 <script>const N={pc:[80,130,"내 PC"],rs:[280,130,"리졸버","168.126.63.1"],root:[560,35,"루트 서버","."],tld:[670,130,"TLD 서버",""],auth:[560,225,"권한 서버",""]};
 const DB={"www.example.com":{tld:".com",auth:"example.com",a:"93.184.215.14"},"www.test.com":{tld:".com",auth:"test.com",cname:"web.test.com",a:"203.0.113.10"},"www.mokpo.ac.kr":{tld:".kr",auth:"mokpo.ac.kr",a:"210.117.200.12"}};
 let cache={},busy=false;const st=document.getElementById('st');

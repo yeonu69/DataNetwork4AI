@@ -8,7 +8,7 @@
 <div class="row" style="align-items:flex-start;gap:14px"><div style="flex:1;min-width:240px"><b>MAC 주소 테이블</b><table id="tb"></table></div><div style="flex:1;min-width:240px"><b>기록</b><div class="log" id="log"></div></div></div></div>
 
 <div class="key"><b>핵심 3줄</b><br>• 스위치는 프레임의 출발지 MAC을 보고 "이 주소는 이 포트에 있다"를 배웁니다.<br>• 목적지를 모르면 플러딩, 알면 그 포트로만 포워딩하므로 다른 PC는 방해받지 않습니다.<br>• 브로드캐스트(ff:ff:ff:ff:ff:ff)는 스위치도 모든 포트로 보냅니다. 이 범위가 브로드캐스트 도메인입니다.</div>
-</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
 <script>const PC=[["PC-A","aa:aa:aa:00:00:0a",120],["PC-B","bb:bb:bb:00:00:0b",290],["PC-C","cc:cc:cc:00:00:0c",470],["PC-D","dd:dd:dd:00:00:0d",640]];
 PC.forEach((p,i)=>{src.add(new Option(p[0],i));dst.add(new Option(p[0],i))});dst.add(new Option("모두(브로드캐스트)",9));dst.value=2;
 let T={},hubMode=false;const svg=document.getElementById('st');

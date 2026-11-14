@@ -1,0 +1,32 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>지연 4형제 계산기 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">1장 시뮬레이터</div><h1>지연 4형제 계산기</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>위쪽 상황 버튼(집 Wi-Fi, 서울→부산, 서울→미국, AI 데이터센터)을 하나 고릅니다.</li><li>막대 그래프에서 처리·큐잉·전송·전파 지연 중 무엇이 가장 큰지 봅니다.</li><li>링크 속도를 10배 올려 보세요. 전송 지연만 줄고 전파 지연은 그대로입니다.</li><li>대기 패킷 수를 늘려 큐잉 지연이 순식간에 커지는 것을 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><button class="sec" data-p="0">집 Wi-Fi</button><button class="sec" data-p="1">서울→부산 광케이블</button><button class="sec" data-p="2">서울→미국 해저 케이블</button><button class="sec" data-p="3">AI 데이터센터 400G</button></div>
+<table><tr><td>패킷 크기</td><td><input type="range" id="L" min="64" max="9000" step="1" value="1500"> <b id="Lv"></b> 바이트</td></tr>
+<tr><td>링크 속도</td><td><input type="range" id="R" min="0" max="6" step="0.1" value="2"> <b id="Rv"></b></td></tr>
+<tr><td>거리</td><td><input type="range" id="D" min="-2" max="4.1" step="0.05" value="2.6"> <b id="Dv"></b></td></tr>
+<tr><td>앞에 줄 선 패킷</td><td><input type="range" id="Q" min="0" max="100" value="5"> <b id="Qv"></b> 개</td></tr>
+<tr><td>장비 처리 시간</td><td><input type="range" id="P" min="0" max="100" value="10"> <b id="Pv"></b> µs</td></tr></table>
+<svg class="stage" id="st" viewBox="0 0 760 210" style="margin-top:10px"></svg>
+<div class="row"><span class="pill">한 홉 총 지연</span><span class="big" id="tot"></span></div>
+<div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 전송 지연 = 패킷 크기 ÷ 링크 속도. 링크가 빠를수록 줄어듭니다.<br>• 전파 지연 = 거리 ÷ 빛의 속도(광케이블에서 약 20만 km/s). 돈으로도 줄일 수 없는 물리 한계입니다.<br>• 큐잉 지연은 앞에 줄 선 패킷 수에 따라 0에서 수십 ms까지 출렁이며, 혼잡의 정체입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const PRE=[[1500,2,-2,3,50],[1500,4,2.6,2,10],[1500,4,4,5,10],[4096,5.6,-1.3,0,1]];
+function fmt(s){return s>=1?s.toFixed(2)+" s":s>=1e-3?(s*1e3).toFixed(3)+" ms":(s*1e6).toFixed(2)+" µs"}
+function bps(r){const v=Math.pow(10,r)*1e6;return v>=1e9?(v/1e9).toFixed(v>=1e10?0:1)+" Gbps":(v/1e6).toFixed(v>=1e7?0:1)+" Mbps"}
+function upd(){const Lb=+L.value*8,R=Math.pow(10,+R_.value)*1e6;
+const kmv=Math.pow(10,+D.value);
+const tx=Lb/R,pr=kmv*1000/2e8,qu=+Q.value*tx,pc=+P.value*1e-6,t=tx+pr+qu+pc;
+Lv.textContent=L.value;Rv.textContent=bps(+R_.value);Dv.textContent=kmv<1?Math.round(kmv*1000)+" m":kmv<10?kmv.toFixed(1)+" km":Math.round(kmv).toLocaleString()+" km";Qv.textContent=Q.value;Pv.textContent=P.value;
+const A=[["처리",pc,"#9b86d9"],["큐잉",qu,"#e69500"],["전송",tx,"#2e8b57"],["전파",pr,"#e6457a"]],mx=Math.max(...A.map(a=>a[1]),1e-9);
+let s="";A.forEach(([n,v,c],i)=>{const y=20+i*45,w=Math.max(2,v/mx*520);s+=`<text x="10" y="${y+20}" font-size="14" font-weight="700">${n} 지연</text><rect x="100" y="${y}" width="${w}" height="30" rx="5" fill="${c}"/><text x="${110+w}" y="${y+20}" font-size="13">${fmt(v)} (${(v/t*100).toFixed(0)}%)</text>`});
+st.innerHTML=s;tot.textContent=fmt(t);
+const big=A.reduce((a,b)=>b[1]>a[1]?b:a);
+log.textContent=`전송 = ${L.value*8} 비트 ÷ ${bps(+R_.value)} = ${fmt(tx)}\n전파 = ${Dv.textContent} ÷ 200,000 km/s = ${fmt(pr)}\n큐잉 = 앞의 ${Q.value}개 × 전송 지연 = ${fmt(qu)}\n처리 = ${P.value} µs\n→ 지금 가장 큰 범인은 '${big[0]} 지연'입니다.`}
+const R_=R;[L,R,D,Q,P].forEach(e=>e.oninput=upd);
+document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const v=PRE[+b.dataset.p];L.value=v[0];R.value=v[1];D.value=v[2];Q.value=v[3];P.value=v[4];upd()});
+upd();
+</script></body></html>

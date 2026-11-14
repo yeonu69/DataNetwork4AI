@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>패킷으로 쪼개 보내기 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">1장 시뮬레이터</div><h1>패킷으로 쪼개 보내기</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>보낼 파일은 24칸짜리 데이터입니다. 패킷 하나에 몇 칸씩 담을지 고릅니다.</li><li>손실률을 정하고 [보내기]를 누르면 패킷이 링크를 건너갑니다. 빨간 칸은 도중에 잃어버린 패킷입니다.</li><li>잃어버린 패킷만 다시 보내므로 몇 번 만에 모두 도착하는지, 실제로 몇 칸을 보냈는지 기록을 봅니다.</li><li>'통째로 1개'와 '2칸씩 12개'를 같은 손실률에서 비교해 봅니다.</li></ol></div>
+<div class="card"><div class="row"><label>패킷 크기 <select id="sz"><option value="24">통째로 1개 (24칸)</option><option value="8">8칸씩 3개</option><option value="4" selected>4칸씩 6개</option><option value="2">2칸씩 12개</option></select></label>
+<label>손실률 <input type="range" id="p" min="0" max="50" value="20"> <b id="pv">20%</b></label></div>
+<div class="row"><button id="go">보내기</button><button class="sec" id="rs">처음으로</button></div>
+<div class="mut">보내는 쪽</div><div id="src" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 10px"></div>
+<div class="mut">받는 쪽</div><div id="dst" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 10px"></div>
+<div class="row"><span class="pill">전송 횟수</span><span class="big" id="rd">0</span>&nbsp;<span class="pill">실제 보낸 칸(헤더 포함)</span><span class="big" id="sent">0</span></div>
+<div class="log" id="log">[보내기]를 눌러 보세요. 패킷마다 주소가 적힌 헤더 1칸이 붙습니다.</div></div>
+<div class="key"><b>핵심 3줄</b><br>• 데이터를 작은 패킷으로 나누면, 하나를 잃어도 그 조각만 다시 보내면 됩니다.<br>• 통째로 보내면 한 군데만 깨져도 전체를 다시 보내야 하므로 손실이 많은 길에서 크게 손해를 봅니다.<br>• 대신 패킷마다 헤더가 붙으므로 너무 잘게 나누면 포장재(헤더)가 늘어납니다. 적당한 크기가 중요합니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const N=24,COL=["#c9b8f2","#b7e4c7","#ffd6a5","#a0c4ff","#ffadad","#fdffb6","#caffbf","#bdb2ff","#ffc6ff","#9bf6ff","#e4c1f9","#f1c0e8"];
+let busy=false;p.oninput=()=>pv.textContent=p.value+"%";
+function cell(c,txt){return `<div style="width:26px;height:26px;border-radius:5px;background:${c};border:1px solid #bbb;font-size:10px;text-align:center;line-height:26px">${txt||""}</div>`}
+function init(){const s=+sz.value;let h="";for(let i=0;i<N;i++)h+=cell(COL[Math.floor(i/s)%COL.length],i+1);src.innerHTML=h;dst.innerHTML=Array.from({length:N},()=>cell("#fff","")).join("");rd.textContent=0;sent.textContent=0;log.textContent="[보내기]를 눌러 보세요. 패킷마다 주소가 적힌 헤더 1칸이 붙습니다."}
+const wait=t=>new Promise(r=>setTimeout(r,t));
+go.onclick=async()=>{if(busy)return;busy=true;init();const s=+sz.value,k=N/s,pr=p.value/100;let pend=[...Array(k).keys()],r=0,tot=0;log.textContent=`파일 24칸을 ${s}칸씩 ${k}개 패킷으로 나눕니다.\n`;
+const d=dst.children;
+while(pend.length&&r<30){r++;const lost=[];for(const i of pend){tot+=s+1;const L=Math.random()<pr;for(let j=i*s;j<(i+1)*s;j++){d[j].style.background=L?"#d9534f":COL[i%COL.length];d[j].textContent=L?"✕":j+1}if(L)lost.push(i);await wait(Math.max(60,300/k))}
+log.textContent+=`${r}회차: ${pend.length}개 보냄 → ${lost.length?("잃어버림: "+lost.map(x=>"#"+(x+1)).join(", ")):"모두 도착"}\n`;log.scrollTop=1e9;rd.textContent=r;sent.textContent=tot;
+await wait(500);for(const i of lost)for(let j=i*s;j<(i+1)*s;j++){d[j].style.background="#fff";d[j].textContent=""}pend=lost}
+log.textContent+=pend.length?"\n30회차까지 다 못 보냈습니다. 손실률이 너무 높습니다.":`\n완료! 원래 데이터는 24칸인데 헤더와 재전송까지 ${tot}칸을 보냈습니다 (효율 ${(2400/tot).toFixed(0)}%).`;busy=false};
+rs.onclick=()=>{if(!busy)init()};sz.onchange=()=>{if(!busy)init()};init();
+</script></body></html>

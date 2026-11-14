@@ -8,7 +8,7 @@
 <div style="overflow-x:auto"><table id="cmp"></table></div></div>
 
 <div class="key"><b>핵심 3줄</b><br>• 올리듀스는 모든 GPU의 기울기를 더해 모두가 같은 합계를 갖게 하는 집합 통신입니다.<br>• 링 방식은 GPU를 원으로 잇고 이웃끼리만 조각을 주고받아, 2(N-1)단계 만에 끝납니다.<br>• GPU 한 대가 보내는 양은 GPU 수와 거의 상관없이 모델 크기의 약 2배라서, 수천 대로 늘려도 링크가 고르게 쓰입니다.</div>
-</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
 <script>const COL=["#6b4fbb","#e6457a","#2e8b57","#e69500","#1f77b4","#8c564b"];let N,V,stepNo,sent;const st=document.getElementById('st');
 function reset(){N=+n.value;nv.textContent=N+"대";V=[];for(let g=0;g<N;g++){V.push([]);for(let c=0;c<N;c++)V[g].push({v:g+1+c,src:[g]})}stepNo=0;sent=0;msg.textContent="처음: GPU마다 자기 값만 가지고 있습니다(조각 "+N+"개).";draw()}
 function step(){const tot=2*(N-1);if(stepNo>=tot){msg.textContent="완료! 모든 GPU가 모든 조각의 합계를 가졌습니다.";return false}

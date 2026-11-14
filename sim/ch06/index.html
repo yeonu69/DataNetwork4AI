@@ -10,7 +10,7 @@
 <p class="mut" id="fl"></p></div>
 
 <div class="key"><b>핵심 3줄</b><br>• 짝수 패리티는 1의 개수를 짝수로 맞추는 1비트로, 홀수 개 비트 오류만 알아챕니다.<br>• CRC는 데이터를 생성 다항식으로 XOR 나눗셈한 나머지를 붙여 보내고, 받는 쪽은 나머지가 0인지로 오류를 판단합니다.<br>• CRC는 패리티가 놓치는 2비트 오류와 연속 오류도 잡아내서 이더넷 FCS(CRC-32)에 쓰입니다.</div>
-</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
 <script>const xor=(a,b)=>a.split('').map((c,i)=>c==b[i]?'0':'1').join('');
 function mod2(bits,gpoly){let r=bits.split(''),steps=[];const k=gpoly.length;for(let i=0;i+k<=r.length;i++){if(r[i]=='1'){const seg=r.slice(i,i+k).join(''),x=xor(seg,gpoly);steps.push(" ".repeat(i)+seg+"\n"+" ".repeat(i)+gpoly+"  XOR → "+x);for(let j=0;j<k;j++)r[i+j]=x[j]}}return{rem:r.slice(r.length-k+1).join(''),steps}}
 let sent="",rx=[],data="",par="";

@@ -1,0 +1,28 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>클라이언트/서버와 P2P | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">1장 시뮬레이터</div><h1>클라이언트/서버와 P2P</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>1 GB 파일을 N명에게 나눠 준다고 합시다. 사용자 수 N 슬라이더를 움직입니다.</li><li>클라이언트/서버 방식에서는 서버 혼자 N번 보내야 하므로 시간이 N에 비례해 늘어납니다.</li><li>P2P에서는 받은 사람이 다시 남에게 나눠 주므로 사람이 늘어도 시간이 거의 늘지 않습니다.</li><li>서버 업로드 속도를 올리면 클라이언트/서버 방식이 얼마나 나아지는지도 비교해 봅니다.</li></ol></div>
+<div class="card"><table><tr><td>사용자 수 N</td><td><input type="range" id="n" min="1" max="200" value="30"> <b id="nv"></b> 명</td></tr>
+<tr><td>서버 업로드</td><td><input type="range" id="us" min="100" max="10000" step="100" value="1000"> <b id="usv"></b> Mbps</td></tr>
+<tr><td>사용자 1명 업로드</td><td><input type="range" id="u" min="0" max="500" step="10" value="50"> <b id="uv"></b> Mbps</td></tr>
+<tr><td>사용자 1명 다운로드</td><td><input type="range" id="dl" min="50" max="1000" step="10" value="300"> <b id="dlv"></b> Mbps</td></tr></table>
+<canvas id="cv" width="760" height="280" style="margin-top:8px"></canvas>
+<div class="row"><span class="pill">클라이언트/서버</span><span class="big" id="tc" style="color:#d9534f"></span>&nbsp;<span class="pill">P2P</span><span class="big" id="tp" style="color:#2e8b57"></span></div>
+<div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 클라이언트/서버는 관리가 쉽지만, 서버 하나가 모든 사용자에게 보내야 해서 사용자가 늘면 느려집니다.<br>• P2P는 사용자가 곧 서버가 되므로, 사람이 많아질수록 나눠 주는 힘(업로드 합)도 함께 커집니다.<br>• 실제 서비스는 두 방식을 섞어 씁니다. CDN과 AI 학습의 집합 통신도 "여럿이 나눠 보내기" 아이디어입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const F=8000,g=cv.getContext('2d');// 1GB = 8000 Mbit
+function cs(N,US,D){return Math.max(N*F/US,F/D)}function pp(N,US,U,D){return Math.max(F/US,F/D,N*F/(US+N*U))}
+function fm(s){return s<120?s.toFixed(1)+"초":(s/60).toFixed(1)+"분"}
+function run(){const N=+n.value,US=+us.value,U=+u.value,D=+dl.value;nv.textContent=N;usv.textContent=US;uv.textContent=U;dlv.textContent=D;
+const W=760,H=280,mx=Math.max(cs(200,US,D),1),X=k=>50+(k-1)/199*(W-70),Y=t=>H-30-t/mx*(H-50);
+g.clearRect(0,0,W,H);g.font="11px sans-serif";g.fillStyle="#666";g.strokeStyle="#eee";
+for(let i=0;i<=4;i++){const t=mx*i/4;g.beginPath();g.moveTo(50,Y(t));g.lineTo(W-20,Y(t));g.stroke();g.fillText(fm(t),2,Y(t)+4)}
+g.fillText("사용자 수 N →",W-100,H-8);[1,50,100,150,200].forEach(k=>g.fillText(k,X(k)-6,H-14));
+[[k=>cs(k,US,D),"#d9534f","클라이언트/서버"],[k=>pp(k,US,U,D),"#2e8b57","P2P"]].forEach(([f,c,nm],i)=>{g.strokeStyle=c;g.lineWidth=3;g.beginPath();for(let k=1;k<=200;k++){k==1?g.moveTo(X(k),Y(f(k))):g.lineTo(X(k),Y(f(k)))}g.stroke();g.fillStyle=c;g.fillText(nm,X(200)-90,Y(f(200))-8-i*4)});
+g.lineWidth=1;g.strokeStyle="#6b4fbb";g.setLineDash([4,4]);g.beginPath();g.moveTo(X(N),20);g.lineTo(X(N),H-30);g.stroke();g.setLineDash([]);
+const a=cs(N,US,D),b=pp(N,US,U,D);tc.textContent=fm(a);tp.textContent=fm(b);
+log.textContent=`클라이언트/서버 = max(N×파일 ÷ 서버 업로드, 파일 ÷ 다운로드)\n  = max(${N}×8000 ÷ ${US}, 8000 ÷ ${D}) = ${fm(a)}\nP2P = max(파일 ÷ 서버 업로드, 파일 ÷ 다운로드, N×파일 ÷ (서버 업로드 + N×사용자 업로드))\n  = max(${(F/US).toFixed(1)}, ${(F/D).toFixed(1)}, ${(N*F/(US+N*U)).toFixed(1)}) = ${fm(b)}\n→ P2P가 ${(a/b).toFixed(1)}배 빠릅니다.`}
+[n,us,u,dl].forEach(e=>e.oninput=run);run();
+</script></body></html>

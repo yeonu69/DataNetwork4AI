@@ -9,7 +9,7 @@
 <p class="mut">초록: 전송 성공 · 빨강: 충돌 · 회색 숫자: 남은 대기 슬롯 · 오른쪽 [ ] 안: 현재 대기 범위(경쟁 윈도)</p></div>
 
 <div class="key"><b>핵심 3줄</b><br>• 공유 매체에서는 한 번에 한 대만 말할 수 있어서, 동시에 보내면 충돌이 납니다.<br>• 충돌한 단말은 무작위 시간만큼 기다리고(백오프), 또 충돌하면 대기 범위를 2배로 늘립니다(이진 지수 백오프).<br>• 단말이 많을수록 충돌이 늘어 처리율이 떨어집니다. 그래서 오늘날 유선 LAN은 스위치로 매체를 나눠 충돌 자체를 없앴습니다.</div>
-</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
 <script>const cv=document.getElementById('cv'),g=cv.getContext('2d');let S,t,hist,cnt,timer=null;const COLS=36;
 function reset(){const k=+n.value;nv.textContent=k+"대";S=Array.from({length:k},()=>({cw:2,b:Math.floor(Math.random()*2)}));t=0;hist=[];cnt={ok:0,co:0,em:0};upd();draw()}
 function step(){const tx=S.map((s,i)=>s.b==0?i:-1).filter(i=>i>=0);const col=[];

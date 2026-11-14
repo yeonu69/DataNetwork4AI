@@ -10,7 +10,7 @@
 <p class="mut" id="ex"></p></div>
 
 <div class="key"><b>핵심 3줄</b><br>• 보내는 쪽은 위에서 아래로 내려가며 계층마다 헤더(이름표)를 붙이고, 받는 쪽은 아래에서 위로 올라가며 떼어 냅니다.<br>• 각 헤더에는 그 계층이 일을 하는 데 필요한 정보만 들어 있습니다(포트, IP 주소, MAC 주소).<br>• 데이터가 작아도 헤더 54바이트(TCP+IP+이더넷)가 붙으므로 작은 패킷일수록 오버헤드 비율이 큽니다.</div>
-</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
 <script>const L=[{n:"응용 계층",u:"메시지",h:null,c:"#fbe3a8"},{n:"전송 계층",u:"세그먼트",h:["TCP 헤더",20,"출발 포트 37935 → 도착 포트 80, 순서 번호"],c:"#c9e8ff"},{n:"네트워크 계층",u:"패킷",h:["IP 헤더",20,"192.168.0.23 → 93.184.215.14, TTL 128"],c:"#d7f2d0"},{n:"데이터 링크 계층",u:"프레임",h:["이더넷 헤더",14,"3c:9c:0f:12:ab:cd → 88:36:6c:aa:bb:cc, 타입 0x0800"],c:"#f6d2e6",t:["FCS",4]},{n:"물리 계층",u:"비트",h:null,c:"#e0e0e0"}];
 let k=0;const pkt=document.getElementById('pkt'),tb=document.getElementById('tb'),ex=document.getElementById('ex');
 function blk(t,c,sz){return `<div style="background:${c};border:1px solid #888;padding:8px 6px;font-size:12.5px;text-align:center;min-width:56px"><b>${t}</b><br><span class="mut">${sz}B</span></div>`}

@@ -1,0 +1,31 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>지연·손실·간섭 체험 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">1장 시뮬레이터</div><h1>지연·손실·간섭 체험</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>영상 통화에서 20 ms마다 음성 조각(패킷)을 하나씩 보낸다고 생각합니다.</li><li>지연, 손실, 간섭(들쭉날쭉한 지연, 지터) 슬라이더를 움직이면 받는 쪽 타임라인이 바로 바뀝니다.</li><li>빨간 칸은 사라진 패킷, 주황 칸은 너무 늦게 와서 버린 패킷입니다.</li><li>세 값을 하나씩 올려 보며 통화 품질 점수가 어떻게 떨어지는지 비교합니다.</li></ol></div>
+<div class="card"><table><tr><td>지연</td><td><input type="range" id="d" min="0" max="600" value="40"> <b id="dv"></b> ms</td></tr>
+<tr><td>손실</td><td><input type="range" id="l" min="0" max="30" value="1"> <b id="lv"></b> %</td></tr>
+<tr><td>간섭(지터)</td><td><input type="range" id="j" min="0" max="80" value="5"> <b id="jv"></b> ms</td></tr></table>
+<div class="row"><button id="again">다시 흘려보내기</button><span class="mut">받는 쪽은 60 ms 버퍼로 기다렸다가 재생합니다.</span></div>
+<canvas id="cv" width="760" height="190"></canvas>
+<div class="row"><span class="pill">제때 도착</span><b id="ok" class="ok"></b>&nbsp;<span class="pill">손실</span><b id="ls" class="bad"></b>&nbsp;<span class="pill">늦어서 버림</span><b id="lt" style="color:#e69500"></b></div>
+<div class="row"><span class="pill">통화 품질</span><span class="big" id="q"></span> <span id="qt"></span></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 지연은 "말이 늦게 들리는 것", 손실은 "말이 끊기는 것", 간섭(지터)은 "도착 간격이 들쭉날쭉한 것"입니다.<br>• 실시간 통화는 대략 지연 150 ms, 손실 1%를 넘으면 불편해집니다.<br>• 지터가 크면 패킷이 도착은 해도 재생 시점을 놓쳐 손실과 같은 결과가 됩니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const g=cv.getContext('2d'),N=30,BUF=60;let seed=1;function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647}
+function gauss(){return Math.sqrt(-2*Math.log(rnd()+1e-9))*Math.cos(2*Math.PI*rnd())}
+let base=7;
+function run(){seed=base;const D=+d.value,L=+l.value/100,J=+j.value;dv.textContent=D;lv.textContent=l.value;jv.textContent=J;
+g.clearRect(0,0,760,190);g.font="12px sans-serif";g.fillStyle="#333";g.fillText("보낸 쪽",4,40);g.fillText("받는 쪽",4,140);
+const X=t=>70+t*0.62;let o=0,ls_=0,lt_=0;
+for(let i=0;i<N;i++){const ts=i*20;g.fillStyle="#9b86d9";g.fillRect(X(ts),25,10,22);
+if(rnd()<L){ls_++;g.fillStyle="#d9534f";g.fillRect(X(ts),125,10,22);continue}
+const jit=Math.abs(gauss()*J),arr=ts+jit;const late=jit>BUF;
+const px=Math.min(X(arr),750);g.strokeStyle=late?"#e69500":"#cfc6ea";g.beginPath();g.moveTo(X(ts)+5,47);g.lineTo(px+5,125);g.stroke();
+g.fillStyle=late?"#e69500":"#2e8b57";g.fillRect(px,125,10,22);late?lt_++:o++}
+g.fillStyle="#666";g.fillText(`(받는 쪽 시간축은 지연 ${D} ms만큼 뒤로 밀려 있다고 보면 됩니다)`,70,180);
+ok.textContent=o+"개";ls.textContent=ls_+"개";lt.textContent=lt_+"개";
+const eff=D+BUF,loss=(ls_+lt_)/N*100;let sc=4.4-Math.max(0,eff-150)*0.006-loss*0.12;sc=Math.max(1,Math.min(4.4,sc));
+q.textContent=sc.toFixed(1)+" / 4.4";const t=sc>=4?["아주 좋음","ok"]:sc>=3.5?["쓸 만함",""]:sc>=2.5?["답답함 (말이 겹치거나 끊김)","bad"]:["통화 곤란","bad"];qt.textContent=t[0];qt.className=t[1]}
+[d,l,j].forEach(e=>e.oninput=run);again.onclick=()=>{base=Math.floor(Math.random()*1e6)+1;run()};run();
+</script></body></html>

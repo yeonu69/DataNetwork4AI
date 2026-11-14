@@ -8,7 +8,7 @@
 <div class="log" id="log"></div></div>
 
 <div class="key"><b>핵심 3줄</b><br>• TCP는 처음에는 cwnd를 RTT마다 2배씩 늘리고(느린 시작), ssthresh를 넘으면 1씩만 늘립니다(혼잡 회피).<br>• 중복 ACK 3개는 가벼운 손실로 보고 절반으로 줄이고(빠른 회복), 타임아웃은 심한 혼잡으로 보고 1부터 다시 시작합니다.<br>• 그래서 cwnd 그래프는 톱니 모양이 되고, 평균 전송 속도는 대략 cwnd ÷ RTT입니다.</div>
-</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
 <script>let cwnd,ssth,hist,timer=null,ev;const g=cv.getContext('2d');
 function reset(){cwnd=1;ssth=32;hist=[[1,null]];ev=[];log.textContent="연결 시작: cwnd=1 MSS, ssthresh=32\n";draw()}
 function phase(){return cwnd<ssth?"느린 시작":"혼잡 회피"}

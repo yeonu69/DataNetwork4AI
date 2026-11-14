@@ -1,0 +1,144 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wireshark 동작 한눈에 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css">
+<style>
+main{max-width:1100px}
+.flow text{font-size:12px}
+#flt{width:280px;font-family:"DejaVu Sans Mono",Consolas,monospace}
+#flt.good{background:#d6f5e3}#flt.badf{background:#ffd9d9}
+.pl{max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.pl table{font-size:12.5px;white-space:nowrap}.pl td,.pl th{border:none;border-bottom:1px solid #eee;padding:3px 6px}
+.pl th{position:sticky;top:0}
+.pl tr.sel td{background:#6b4fbb!important;color:#fff}
+.pl tbody tr{cursor:pointer}
+.dt{font-family:"DejaVu Sans Mono",Consolas,monospace;font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:6px;max-height:260px;overflow:auto;background:#fff}
+.dt div{cursor:pointer;padding:1px 4px;border-radius:4px;white-space:nowrap}
+.dt div:hover{background:#f1ecff}.dt div.on{background:#fff2b3}
+.hx{font-family:"DejaVu Sans Mono",Consolas,monospace;font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:6px;background:#fff;overflow:auto;white-space:pre}
+.hx span.on{background:#ffd54a}
+.chips button{font-size:12px;padding:3px 8px}
+</style></head><body>
+<header><div class="ch">1장 시뮬레이터</div><h1>Wireshark 동작 한눈에</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>[캡처 시작]을 누르면 내 PC가 웹 사이트에 접속하는 동안 오가는 패킷이 위쪽 흐름도(랜카드 → 캡처 드라이버 → 캡처 필터 → 해석 → 디스플레이 필터 → 화면)를 지나 목록에 쌓입니다.</li><li>디스플레이 필터 칸에 <span class="mono">dns</span>, <span class="mono">arp</span>, <span class="mono">tcp.port==80</span>, <span class="mono">ip.addr==8.8.8.8</span>처럼 입력하고 Enter를 누릅니다. 문법이 맞으면 초록, 틀리면 빨강이 됩니다.</li><li>목록에서 패킷 하나를 고르면 가운데 '상세'에 계층별 헤더가, 아래 '바이트'에 실제 16진수가 나옵니다.</li><li>상세에서 필드(예: Source Address)를 누르면 그 필드가 바이트 창의 어디인지 노랗게 표시됩니다. 계층 이름 앞의 ▶를 눌러 펼치고 접어 보세요.</li></ol></div>
+<div class="card"><h2>① 캡처는 이렇게 흘러갑니다</h2>
+<svg class="stage flow" id="fl" viewBox="0 0 1040 120"></svg>
+<div class="row"><label>인터페이스 <select id="ifc"><option>Wi-Fi (192.168.0.23)</option><option>이더넷 (192.168.0.23)</option></select></label>
+<label>캡처 필터 <select id="cf"><option value="">(없음) 모두 저장</option><option value="port 53">port 53 (DNS만)</option><option value="host 8.8.8.8">host 8.8.8.8</option><option value="not arp">not arp</option></select></label>
+<button id="go">캡처 시작</button><button class="sec" id="stop">정지</button><button class="sec" id="all">한 번에 다 받기</button></div>
+<div class="row"><span class="pill">랜카드에 도착</span><b id="c1">0</b>&nbsp;<span class="pill">캡처 필터로 버림</span><b id="c2">0</b>&nbsp;<span class="pill">저장됨</span><b id="c3">0</b>&nbsp;<span class="pill">화면에 표시</span><b id="c4">0</b></div></div>
+<div class="card"><h2>② 디스플레이 필터와 패킷 목록</h2>
+<div class="row"><input type="text" id="flt" placeholder="디스플레이 필터 입력 후 Enter (예: dns)"><button id="ap">적용</button><button class="sec" id="clr">지우기</button></div>
+<div class="row chips"><span class="mut">자주 쓰는 필터:</span><button class="sec">arp</button><button class="sec">dns</button><button class="sec">icmp</button><button class="sec">tcp.port==80</button><button class="sec">http</button><button class="sec">tls</button><button class="sec">ip.addr==8.8.8.8</button><button class="sec">tcp.flags.syn==1</button><button class="sec">dns or icmp</button></div>
+<div class="pl"><table><thead><tr><th>No.</th><th>Time</th><th>Source</th><th>Destination</th><th>Protocol</th><th>Length</th><th>Info</th></tr></thead><tbody id="tb"></tbody></table></div></div>
+<div class="card"><h2>③ 상세 (계층별 헤더)</h2><div class="dt" id="dt"><span class="mut">목록에서 패킷을 고르세요.</span></div></div>
+<div class="card"><h2>④ 바이트 (실제 16진수)</h2><div class="hx" id="hx"></div><div class="mut" id="hsel"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• Wireshark는 랜카드에 오가는 프레임을 캡처 드라이버(Npcap, libpcap)로 복사해 와서, 프로토콜별 해석기로 풀어 보여 줍니다.<br>• 캡처 필터는 저장하기 전에 버리는 것(되돌릴 수 없음), 디스플레이 필터는 저장한 것 중 골라 보는 것(언제든 바꿀 수 있음)입니다.<br>• 화면 3단은 같은 패킷을 세 번 보는 것입니다. 목록은 요약, 상세는 계층별 해석, 바이트는 실제 전선 위의 값입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+// ---------- 패킷 만들기 ----------
+const ME="192.168.0.23",GW="192.168.0.1",DNS="168.126.63.1",WEB="93.184.215.14",G8="8.8.8.8";
+const MYMAC="3c:9c:0f:12:ab:cd",GWMAC="88:36:6c:aa:bb:cc",BC="ff:ff:ff:ff:ff:ff";
+const mac=s=>s.split(":").map(x=>parseInt(x,16)),ip=s=>s.split(".").map(Number),u16=v=>[v>>8&255,v&255],u32=v=>[v>>>24&255,v>>>16&255,v>>>8&255,v&255];
+const txt=s=>Array.from(new TextEncoder().encode(s)),hex2=v=>"0x"+v.toString(16).padStart(4,"0");
+function B(){this.b=[];this.root=[];this.st=[]}
+B.prototype.par=function(){return this.st.length?this.st[this.st.length-1].c:this.root};
+B.prototype.g=function(t){const n={t,s:this.b.length,l:0,c:[]};this.par().push(n);this.st.push(n);return this};
+B.prototype.e=function(){const n=this.st.pop();n.l=this.b.length-n.s;return this};
+B.prototype.f=function(t,by){this.par().push({t,s:this.b.length,l:by.length,c:[]});this.b.push(...by);return this};
+B.prototype.add=function(o){const off=this.b.length;const sh=n=>({t:n.t,s:n.s+off,l:n.l,c:n.c.map(sh)});o.root.forEach(n=>this.par().push(sh(n)));this.b.push(...o.b);return this};
+function csum(a){let s=0;for(let i=0;i<a.length;i+=2)s+=(a[i]<<8)+(a[i+1]||0);while(s>>16)s=(s&65535)+(s>>16);return ~s&65535}
+function eth(b,d,s,type){b.g(`Ethernet II, Src: ${s}, Dst: ${d}`).f(`Destination: ${d}${d==BC?" (Broadcast)":""}`,mac(d)).f(`Source: ${s}`,mac(s)).f(`Type: ${type==0x800?"IPv4":"ARP"} (${hex2(type)})`,u16(type)).e()}
+let IPID=0x1c46;
+function ipv4(b,s,d,proto,plen,ttl){const tl=20+plen,id=IPID++;const h=[0x45,0,...u16(tl),...u16(id),0x40,0,ttl,proto,0,0,...ip(s),...ip(d)];const c=csum(h);
+const pn={1:"ICMP",6:"TCP",17:"UDP"}[proto];
+b.g(`Internet Protocol Version 4, Src: ${s}, Dst: ${d}`).f("0100 .... = Version: 4",[0x45]).f("Differentiated Services Field: 0x00",[0]).f(`Total Length: ${tl}`,u16(tl)).f(`Identification: ${hex2(id)} (${id})`,u16(id)).f("Flags: 0x2, Don't fragment",[0x40,0]).f(`Time to Live: ${ttl}`,[ttl]).f(`Protocol: ${pn} (${proto})`,[proto]).f(`Header Checksum: ${hex2(c)} [검증됨]`,u16(c)).f(`Source Address: ${s}`,ip(s)).f(`Destination Address: ${d}`,ip(d)).e()}
+function udp(b,sp,dp,plen){const l=8+plen;b.g(`User Datagram Protocol, Src Port: ${sp}, Dst Port: ${dp}`).f(`Source Port: ${sp}`,u16(sp)).f(`Destination Port: ${dp}`,u16(dp)).f(`Length: ${l}`,u16(l)).f("Checksum: 0x0000 [검증 안 함]",[0,0]).e()}
+const FL={F:1,S:2,R:4,P:8,A:16};
+function tcp(b,sp,dp,seq,ack,fl,win,plen){let f=0;for(const k of fl)f|=FL[k];const nm=[];if(f&2)nm.push("SYN");if(f&1)nm.push("FIN");if(f&8)nm.push("PSH");if(f&16)nm.push("ACK");
+b.g(`Transmission Control Protocol, Src Port: ${sp}, Dst Port: ${dp}, Seq: ${seq}${f&16?", Ack: "+ack:""}, Len: ${plen}`).f(`Source Port: ${sp}`,u16(sp)).f(`Destination Port: ${dp}`,u16(dp)).f(`Sequence Number: ${seq}    (상대 순서 번호)`,u32(seq)).f(`Acknowledgment Number: ${ack}`,u32(ack)).f("0101 .... = Header Length: 20 bytes (5)",[0x50]).f(`Flags: ${hex2(f)} (${nm.join(", ")})`,[f]).f(`Window: ${win}`,u16(win)).f("Checksum: [검증 안 함]",[0x8f,0x3a]).f("Urgent Pointer: 0",[0,0]).e()}
+function dnsname(n){const o=[];n.split(".").forEach(p=>{o.push(p.length,...txt(p))});o.push(0);return o}
+function dns(q,id,ans){const a=new B();a.g(`Domain Name System (${ans?"response":"query"})`).f(`Transaction ID: ${hex2(id)}`,u16(id)).f(`Flags: ${ans?"0x8180 Standard query response, No error":"0x0100 Standard query"}`,ans?[0x81,0x80]:[1,0]).f("Questions: 1",[0,1]).f(`Answer RRs: ${ans?1:0}`,[0,ans?1:0]).f("Authority RRs: 0",[0,0]).f("Additional RRs: 0",[0,0]);
+a.g("Queries").g(`${q}: type A, class IN`).f(`Name: ${q}`,dnsname(q)).f("Type: A (1) (Host Address)",[0,1]).f("Class: IN (0x0001)",[0,1]).e().e();
+if(ans){a.g("Answers").g(`${q}: type A, class IN, addr ${ans}`).f(`Name: ${q} (앞의 이름을 가리키는 포인터 0xc00c)`,[0xc0,0x0c]).f("Type: A (1)",[0,1]).f("Class: IN",[0,1]).f("Time to live: 300 (5 minutes)",u32(300)).f("Data length: 4",[0,4]).f(`Address: ${ans}`,ip(ans)).e().e()}
+a.e();return a}
+function arp(op,smac,sip,tmac,tip){const a=new B();a.g(`Address Resolution Protocol (${op==1?"request":"reply"})`).f("Hardware type: Ethernet (1)",[0,1]).f("Protocol type: IPv4 (0x0800)",[8,0]).f("Hardware size: 6",[6]).f("Protocol size: 4",[4]).f(`Opcode: ${op==1?"request":"reply"} (${op})`,[0,op]).f(`Sender MAC address: ${smac}`,mac(smac)).f(`Sender IP address: ${sip}`,ip(sip)).f(`Target MAC address: ${tmac}`,mac(tmac)).f(`Target IP address: ${tip}`,ip(tip)).e();return a}
+function icmp(type,id,seq){const data=txt("abcdefghijklmnopqrstuvwabcdefghi");const h=[type,0,0,0,...u16(id),...u16(seq),...data];const c=csum(h);const a=new B();
+a.g(`Internet Control Message Protocol`).f(`Type: ${type} (Echo (ping) ${type==8?"request":"reply"})`,[type]).f("Code: 0",[0]).f(`Checksum: ${hex2(c)} [검증됨]`,u16(c)).f(`Identifier: ${id}`,u16(id)).f(`Sequence Number: ${seq}`,u16(seq)).f("Data (32 bytes)",data).e();return a}
+function http(s,first){const a=new B();a.g("Hypertext Transfer Protocol");s.split("\r\n").forEach((ln,i,arr)=>{if(i==arr.length-1){if(ln)a.f(`Line-based text data: ${ln}`,txt(ln));return}a.f(ln?ln+"\\r\\n":"\\r\\n (헤더 끝)",txt(ln+"\r\n"))});a.e();return a}
+function tlsHello(sni){const nm=txt(sni),ext=[0,0,...u16(nm.length+5),...u16(nm.length+3),0,...u16(nm.length),...nm];const rnd=Array.from({length:32},(_,i)=>(i*73+19)&255);
+const hs=[3,3,...rnd,0,0,2,0x13,1,1,0,...u16(ext.length)];const hl=hs.length+ext.length;const a=new B();
+a.g("Transport Layer Security").g("TLSv1.3 Record Layer: Handshake Protocol: Client Hello").f("Content Type: Handshake (22)",[22]).f("Version: TLS 1.0 (0x0301)",[3,1]).f(`Length: ${hl+4}`,u16(hl+4)).g("Handshake Protocol: Client Hello").f("Handshake Type: Client Hello (1)",[1]).f(`Length: ${hl}`,[0,...u16(hl)]).f("Version: TLS 1.2 (0x0303)",[3,3]).f("Random: (32바이트 난수)",rnd).f("Session ID Length: 0",[0]).f("Cipher Suites Length: 2",[0,2]).f("Cipher Suite: TLS_AES_128_GCM_SHA256 (0x1301)",[0x13,1]).f("Compression Methods: null",[1,0]).f(`Extensions Length: ${ext.length}`,u16(ext.length)).g(`Extension: server_name (len=${nm.length+5}) name=${sni}  ← 암호화 전이라 보임!`).f("Type: server_name (0)",[0,0]).f(`Length: ${nm.length+5}`,u16(nm.length+5)).f(`Server Name list length: ${nm.length+3}`,u16(nm.length+3)).f("Server Name Type: host_name (0)",[0]).f(`Server Name length: ${nm.length}`,u16(nm.length)).f(`Server Name: ${sni}`,nm).e().e().e().e();return a}
+function tlsData(n){const d=Array.from({length:n},(_,i)=>(i*151+7)&255);const a=new B();a.g("Transport Layer Security").g("TLSv1.3 Record Layer: Application Data Protocol").f("Opaque Type: Application Data (23)",[23]).f("Version: TLS 1.2 (0x0303)",[3,3]).f(`Length: ${n}`,u16(n)).f("Encrypted Application Data: (내용은 암호화되어 읽을 수 없음)",d).e().e();return a}
+let T=0;const PK=[];
+function frame(meta,build){const b=new B();build(b);let pad=0;if(b.b.length<60){pad=60-b.b.length;b.f(`Padding: ${pad}바이트 (최소 크기 60바이트 맞추기)`,Array(pad).fill(0))}
+const fr={t:`Frame ${PK.length+1}: ${b.b.length} bytes on wire (${b.b.length*8} bits), ${b.b.length} bytes captured, on interface ${IFC()}`,s:0,l:b.b.length,c:[{t:`Arrival Time: 2026-11-14 16:20:${(T+5).toFixed(6).padStart(9,"0")} KST`,s:0,l:0,c:[]},{t:`Frame Length: ${b.b.length} bytes`,s:0,l:0,c:[]},{t:`[Protocols in frame: ${meta.stack}]`,s:0,l:0,c:[]}]};
+PK.push(Object.assign({no:PK.length+1,time:T,bytes:b.b,tree:[fr,...b.root],len:b.b.length},meta))}
+function IFC(){return ifc.selectedIndex?"eth0":"Wi-Fi"}
+function L4(proto,s,d,ttl,smac,dmac,inner,l4fn){return b=>{eth(b,dmac,smac,0x800);ipv4(b,s,d,proto,(proto==1?0:proto==17?8:20)+inner.b.length,ttl);if(l4fn)l4fn(b,inner.b.length);b.add(inner)}}
+function gen(){PK.length=0;T=0;IPID=0x1c46;const st=(t)=>T+=t;
+const q1=dns("www.example.com",0x3a1f),r1=dns("www.example.com",0x3a1f,WEB);
+const a1=arp(1,MYMAC,ME,"00:00:00:00:00:00",GW),a2=arp(2,GWMAC,GW,MYMAC,ME);
+frame({src:MYMAC,dst:"Broadcast",proto:"ARP",info:`Who has ${GW}? Tell ${ME}`,stack:"eth:ethertype:arp",p:["arp"],ips:[]},b=>{eth(b,BC,MYMAC,0x806);b.add(a1)});st(0.000412);
+frame({src:GWMAC,dst:MYMAC,proto:"ARP",info:`${GW} is at ${GWMAC}`,stack:"eth:ethertype:arp",p:["arp"],ips:[]},b=>{eth(b,MYMAC,GWMAC,0x806);b.add(a2)});st(0.0012);
+frame({src:ME,dst:DNS,proto:"DNS",info:"Standard query 0x3a1f A www.example.com",stack:"eth:ethertype:ip:udp:dns",p:["ip","udp","dns"],ips:[ME,DNS],ports:[53111,53]},L4(17,ME,DNS,128,MYMAC,GWMAC,q1,(b,n)=>udp(b,53111,53,n)));st(0.0081);
+frame({src:DNS,dst:ME,proto:"DNS",info:`Standard query response 0x3a1f A www.example.com A ${WEB}`,stack:"eth:ethertype:ip:udp:dns",p:["ip","udp","dns"],ips:[DNS,ME],ports:[53,53111]},L4(17,DNS,ME,57,GWMAC,MYMAC,r1,(b,n)=>udp(b,53,53111,n)));st(0.0004);
+const E=new B();const tc=(s,d,sp,dp,sq,ak,fl,info,inner,ttl,sm,dm,extra)=>frame(Object.assign({src:s,dst:d,proto:extra&&extra.proto||"TCP",info,stack:"eth:ethertype:ip:tcp"+(extra&&extra.stk||""),p:["ip","tcp"].concat(extra&&extra.p||[]),ips:[s,d],ports:[sp,dp],flags:fl},{}),L4(6,s,d,ttl,sm,dm,inner||E,(b,n)=>tcp(b,sp,dp,sq,ak,fl,64240,n)));
+tc(ME,WEB,51544,80,0,0,"S","51544 → 80 [SYN] Seq=0 Win=64240 Len=0",null,128,MYMAC,GWMAC);st(0.142);
+tc(WEB,ME,80,51544,0,1,"SA","80 → 51544 [SYN, ACK] Seq=0 Ack=1 Win=65535 Len=0",null,52,GWMAC,MYMAC);st(0.0002);
+tc(ME,WEB,51544,80,1,1,"A","51544 → 80 [ACK] Seq=1 Ack=1 Win=64240 Len=0",null,128,MYMAC,GWMAC);st(0.0003);
+const req="GET / HTTP/1.1\r\nHost: www.example.com\r\nUser-Agent: curl/8.4.0\r\nAccept: */*\r\n\r\n";const hq=http(req);
+tc(ME,WEB,51544,80,1,1,"PA","GET / HTTP/1.1",hq,128,MYMAC,GWMAC,{proto:"HTTP",stk:":http",p:["http"]});st(0.143);
+const body="<html><body>Hello, Network!</body></html>";const res=`HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: ${body.length}\r\n\r\n${body}`;const hr=http(res);
+tc(WEB,ME,80,51544,1,1+txt(req).length,"PA","HTTP/1.1 200 OK  (text/html)",hr,52,GWMAC,MYMAC,{proto:"HTTP",stk:":http:data-text-lines",p:["http"]});st(0.0005);
+tc(ME,WEB,51544,80,1+txt(req).length,1+txt(res).length,"A",`51544 → 80 [ACK] Seq=${1+txt(req).length} Ack=${1+txt(res).length} Win=64240 Len=0`,null,128,MYMAC,GWMAC);st(0.91);
+for(let s=1;s<=2;s++){frame({src:ME,dst:G8,proto:"ICMP",info:`Echo (ping) request  id=0x0001, seq=${s}/${s<<8}, ttl=128`,stack:"eth:ethertype:ip:icmp:data",p:["ip","icmp"],ips:[ME,G8]},L4(1,ME,G8,128,MYMAC,GWMAC,icmp(8,1,s)));st(0.0312);
+frame({src:G8,dst:ME,proto:"ICMP",info:`Echo (ping) reply    id=0x0001, seq=${s}/${s<<8}, ttl=117`,stack:"eth:ethertype:ip:icmp:data",p:["ip","icmp"],ips:[G8,ME]},L4(1,G8,ME,117,GWMAC,MYMAC,icmp(0,1,s)));st(0.98)}
+tc(ME,WEB,51560,443,0,0,"S","51560 → 443 [SYN] Seq=0 Win=64240 Len=0",null,128,MYMAC,GWMAC);st(0.141);
+tc(WEB,ME,443,51560,0,1,"SA","443 → 51560 [SYN, ACK] Seq=0 Ack=1 Win=65535 Len=0",null,52,GWMAC,MYMAC);st(0.0002);
+tc(ME,WEB,51560,443,1,1,"A","51560 → 443 [ACK] Seq=1 Ack=1 Win=64240 Len=0",null,128,MYMAC,GWMAC);st(0.0004);
+const ch=tlsHello("www.example.com");tc(ME,WEB,51560,443,1,1,"PA","Client Hello (SNI=www.example.com)",ch,128,MYMAC,GWMAC,{proto:"TLSv1.3",stk:":tls",p:["tls"]});st(0.29);
+const ad=tlsData(48);tc(WEB,ME,443,51560,1,1+ch.b.length,"PA","Application Data",ad,52,GWMAC,MYMAC,{proto:"TLSv1.3",stk:":tls",p:["tls"]});}
+// ---------- 필터 ----------
+function term(t,p){t=t.trim();let neg=false;while(/^(!|not\s)/.test(t)){neg=!neg;t=t.replace(/^(!|not\s+)/,"").trim()}
+let m,r;
+if(/^(arp|ip|udp|tcp|dns|icmp|http|tls|eth|frame)$/.test(t))r=t=="eth"||t=="frame"||p.p.includes(t)||(t=="ip"&&p.ips.length>0);
+else if(m=t.match(/^ip\.(addr|src|dst)\s*==\s*([\d.]+)$/))r=m[1]=="addr"?p.ips.includes(m[2]):m[1]=="src"?p.ips[0]==m[2]:p.ips[1]==m[2];
+else if(m=t.match(/^(tcp|udp)\.(port|srcport|dstport)\s*==\s*(\d+)$/))r=p.p.includes(m[1])&&(m[2]=="port"?p.ports.includes(+m[3]):m[2]=="srcport"?p.ports[0]==+m[3]:p.ports[1]==+m[3]);
+else if(m=t.match(/^tcp\.flags\.(syn|ack|fin)\s*==\s*([01])$/))r=!!p.flags&&(p.flags.includes({syn:"S",ack:"A",fin:"F"}[m[1]])==(m[2]=="1"));
+else if(m=t.match(/^frame\.len\s*(==|>|<|>=|<=)\s*(\d+)$/)){const v=+m[2],l=p.len;r={"==":l==v,">":l>v,"<":l<v,">=":l>=v,"<=":l<=v}[m[1]]}
+else throw Error("bad");return neg?!r:r}
+function match(f,p){if(!f.trim())return true;return f.split(/\s+or\s+|\|\|/).some(o=>o.split(/\s+and\s+|&&/).every(a=>term(a,p)))}
+function capOK(p){const c=cf.value;if(!c)return true;if(c=="port 53")return (p.ports||[]).includes(53);if(c=="host 8.8.8.8")return p.ips.includes(G8);if(c=="not arp")return p.proto!="ARP";return true}
+// ---------- 화면 ----------
+const COLR={ARP:"#faf0d7",DNS:"#daeeff",ICMP:"#fce0ff",HTTP:"#e4ffc7",TCP:"#e7e6ff","TLSv1.3":"#e7e6ff"};
+let saved=[],seen=0,dropped=0,sel=null,timer=null,curF="";
+const STEPS=[["랜카드(NIC)","신호 → 프레임"],["캡처 드라이버","Npcap/libpcap이 복사"],["캡처 필터","저장 전에 거르기"],["캡처 버퍼","pcapng로 저장"],["해석기","계층별로 풀어 읽기"],["디스플레이 필터","골라 보기"],["화면 3단","목록·상세·바이트"]];
+function drawFlow(k,color){let s="";STEPS.forEach(([a,b],i)=>{const x=8+i*148;s+=`<rect x="${x}" y="30" width="132" height="56" rx="8" fill="${i==k?"#efe9ff":"#fff"}" stroke="${i==k?(color||"#6b4fbb"):"#9b86d9"}" stroke-width="${i==k?3:1.5}"/><text x="${x+66}" y="54" text-anchor="middle" font-weight="700">${a}</text><text x="${x+66}" y="72" text-anchor="middle" fill="#666" font-size="11">${b}</text>`;if(i<6)s+=`<path d="M${x+134} 58 l12 0" stroke="#9b86d9" stroke-width="2" marker-end="url(#ar)"/>`});
+fl.innerHTML=`<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#9b86d9"/></marker></defs>`+s+(k>=0?`<text x="520" y="110" text-anchor="middle" font-size="12" fill="${color||"#6b4fbb"}">${flowMsg}</text>`:"")}
+let flowMsg="";
+function rows(){let h="",shown=0;for(const p of saved){let ok;try{ok=match(curF,p)}catch(e){ok=true}if(!ok)continue;shown++;
+h+=`<tr data-n="${p.no}" class="${sel&&sel.no==p.no?"sel":""}"><td style="background:${COLR[p.proto]}">${p.no}</td><td style="background:${COLR[p.proto]}">${p.time.toFixed(6)}</td><td style="background:${COLR[p.proto]}">${p.src}</td><td style="background:${COLR[p.proto]}">${p.dst}</td><td style="background:${COLR[p.proto]}">${p.proto}</td><td style="background:${COLR[p.proto]}">${p.len}</td><td style="background:${COLR[p.proto]}">${p.info}</td></tr>`}
+tb.innerHTML=h;c4.textContent=shown;tb.querySelectorAll("tr").forEach(r=>r.onclick=()=>pick(PK[+r.dataset.n-1]))}
+const open=new Set(["0"]);
+function pick(p){sel=p;open.clear();rows();detail();hexd(null)}
+function detail(){if(!sel)return;let h="";const walk=(ns,path,dep)=>ns.forEach((n,i)=>{const id=path+"."+i,has=n.c.length>0,isOpen=open.has(id);
+h+=`<div data-id="${id}" data-s="${n.s}" data-l="${n.l}" style="padding-left:${dep*16+4}px">${has?(isOpen?"▼ ":"▶ "):"&nbsp;&nbsp;"}${esc(n.t)}</div>`;if(has&&isOpen)walk(n.c,id,dep+1)});
+walk(sel.tree,"r",0);dt.innerHTML=h;dt.querySelectorAll("div").forEach(d=>d.onclick=()=>{const id=d.dataset.id;const node=findN(id);if(node.c.length&&(open.has(id)?open.delete(id):open.add(id)));detail();
+const nd=dt.querySelector(`[data-id="${id}"]`);nd.classList.add("on");hexd([+d.dataset.s,+d.dataset.l],node.t)})}
+function findN(id){const ix=id.split(".").slice(1).map(Number);let a=sel.tree,n;for(const i of ix){n=a[i];a=n.c}return n}
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+function hexd(r,t){if(!sel){hx.textContent="";return}const b=sel.bytes;let h="";for(let o=0;o<b.length;o+=16){h+=o.toString(16).padStart(4,"0")+"  ";let a="";for(let i=o;i<o+16;i++){if(i<b.length){const on=r&&r[1]&&i>=r[0]&&i<r[0]+r[1];h+=`<span${on?' class="on"':""}>${b[i].toString(16).padStart(2,"0")}</span> `;const c=b[i]>=32&&b[i]<127?String.fromCharCode(b[i]):".";a+=`<span${on?' class="on"':""}>${esc(c)}</span>`}else{h+="   "}if(i==o+7)h+=" "}h+="  "+a+"\n"}
+hx.innerHTML=h;hsel.textContent=r&&r[1]?`선택한 필드: ${r[1]}바이트 (위치 ${r[0]}~${r[0]+r[1]-1}). 노란색이 실제 전송된 값입니다.`:(r?"이 항목은 Wireshark가 덧붙인 정보라서 실제 바이트가 없습니다.":"상세 창에서 필드를 눌러 보세요.")}
+const wait=t=>new Promise(r=>setTimeout(r,t));
+async function feed(p,fast){seen++;c1.textContent=seen;
+if(!fast){for(let k=0;k<7;k++){flowMsg=k==2&&!capOK(p)?`#${p.no} ${p.proto}: 캡처 필터(${cf.value})에 안 맞아 버립니다`:k==5&&curF?`#${p.no} ${p.proto}: 디스플레이 필터 "${curF}" ${(()=>{try{return match(curF,p)?"통과 → 화면에 표시":"불일치 → 저장은 되었지만 숨김"}catch(e){return"(필터 오류)"}})()}`:`#${p.no} ${p.proto}  ${p.info}`;drawFlow(k,k==2&&!capOK(p)?"#d9534f":null);if(!timer)return;await wait(110);if(k==2&&!capOK(p))break}}
+if(!capOK(p)){dropped++;c2.textContent=dropped;return}saved.push(p);c3.textContent=saved.length;rows()}
+function reset(){gen();saved=[];seen=0;dropped=0;sel=null;[c1,c2,c3,c4].forEach(c=>c.textContent=0);tb.innerHTML="";dt.innerHTML='<span class="mut">목록에서 패킷을 고르세요.</span>';hx.textContent="";hsel.textContent=""}
+go.onclick=async()=>{if(timer)return;reset();timer=1;go.disabled=true;for(const p of PK){if(!timer)break;await feed(p,false);await wait(150)}timer=null;go.disabled=false;drawFlow(-1);if(saved.length&&!sel)pick(saved[0])};
+stop.onclick=()=>{timer=null;go.disabled=false;drawFlow(-1)};
+all.onclick=()=>{timer=null;go.disabled=false;reset();PK.forEach(p=>feed(p,true));drawFlow(-1);if(saved.length)pick(saved[0])};
+function applyF(){const v=flt.value.trim();try{if(v)saved.concat(PK).forEach(p=>match(v,p));flt.className=v?"good":"";curF=v;rows()}catch(e){flt.className="badf"}}
+ap.onclick=applyF;flt.onkeydown=e=>{if(e.key=="Enter")applyF()};flt.oninput=()=>{try{const v=flt.value.trim();if(v)PK.forEach(p=>match(v,p));flt.className=v?"good":""}catch(e){flt.className="badf"}};
+clr.onclick=()=>{flt.value="";applyF()};document.querySelectorAll(".chips button").forEach(b=>b.onclick=()=>{flt.value=b.textContent;applyF()});
+ifc.onchange=()=>{reset()};
+reset();drawFlow(-1);
+</script></body></html>
