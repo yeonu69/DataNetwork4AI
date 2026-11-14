@@ -1,0 +1,26 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>토큰링 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">6장 시뮬레이터</div><h1>토큰링: 차례를 정해 말하기</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>노란 별이 '토큰(발언권)'입니다. [시작]을 누르면 토큰이 고리를 따라 돕니다.</li><li>컴퓨터를 누르면 그 컴퓨터에 보낼 데이터가 하나 생깁니다(숫자 = 대기 중인 프레임 수). 받는 사람은 무작위로 정해집니다.</li><li>토큰이 데이터를 가진 컴퓨터에 오면, 토큰을 붙잡고 프레임을 한 바퀴 돌려 보냅니다. 받는 컴퓨터는 복사하고, 프레임이 돌아오면 보낸 쪽이 지우고 토큰을 다음으로 넘깁니다.</li><li>여러 컴퓨터를 한꺼번에 눌러도 충돌이 한 번도 없다는 것, 대신 내 차례까지 기다려야 한다는 것을 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><button id="go">시작</button><button class="sec" id="all">모두에게 데이터 1개씩</button><button class="sec" id="rs">처음으로</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 340"></svg>
+<div class="row"><span class="pill">전달 완료</span><b id="dn">0</b>&nbsp;<span class="pill">충돌</span><b class="ok">0 (항상)</b>&nbsp;<span class="pill">최대 대기</span><b id="mw">0</b> 자리(토큰이 지나간 PC 수)</div><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 토큰링은 발언권(토큰)을 가진 장비만 보낼 수 있게 해서, 충돌이 원천적으로 생기지 않습니다.<br>• 대신 보낼 것이 없어도 토큰이 돌아오기를 기다려야 하고, 토큰을 잃어버리면 복구 절차가 필요해 장비가 복잡했습니다.<br>• 값싸고 단순한 이더넷과 스위치에 밀려 사라졌지만, '차례 정하기' 아이디어는 산업용 네트워크와 무선 스케줄링에 살아 있습니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const N=6,C=[400,170],R=130,NM="ABCDEF";let Q,pos,run_=false,state,done,maxw,t0;
+const P=i=>[C[0]+R*Math.cos(i/N*2*Math.PI-Math.PI/2),C[1]+R*Math.sin(i/N*2*Math.PI-Math.PI/2)];
+function reset(){Q=Array.from({length:N},()=>[]);pos=0;state=null;done=0;maxw=0;dn.textContent=0;mw.textContent=0;log.textContent="";draw()}
+function draw(){let s=`<circle cx="${C[0]}" cy="${C[1]}" r="${R}" fill="none" stroke="#cfc6ea" stroke-width="8"/>`;
+for(let i=0;i<N;i++){const[x,y]=P(i),h=state&&(state.src==i||state.dst==i);s+=`<g data-i="${i}" style="cursor:pointer"><rect x="${x-38}" y="${y-22}" width="76" height="44" rx="8" fill="${state&&state.src==i?"#efe9ff":state&&state.dst==i?"#d6f5e3":"#fff"}" stroke="#9b86d9" stroke-width="2"/><text x="${x}" y="${y+5}" text-anchor="middle" font-weight="700">PC ${NM[i]}</text>${Q[i].length?`<circle cx="${x+34}" cy="${y-20}" r="11" fill="#e6457a"/><text x="${x+34}" y="${y-16}" text-anchor="middle" fill="#fff" font-size="12">${Q[i].length}</text>`:""}</g>`}
+const a=pos/N*2*Math.PI-Math.PI/2,x=C[0]+R*Math.cos(a),y=C[1]+R*Math.sin(a);
+s+=state?`<rect x="${x-16}" y="${y-11}" width="32" height="22" rx="4" fill="#6b4fbb"/><text x="${x}" y="${y+5}" text-anchor="middle" fill="#fff" font-size="11">${NM[state.src]}→${NM[state.dst]}</text>`:`<text x="${x}" y="${y+9}" text-anchor="middle" font-size="28">⭐</text>`;
+s+=`<text x="${C[0]}" y="${C[1]+5}" text-anchor="middle" font-size="13" fill="#666">${state?"프레임 전송 중 (토큰은 "+NM[state.src]+"가 보유)":"토큰 순환 중"}</text>`;
+sv.innerHTML=s;sv.querySelectorAll("g[data-i]").forEach(g=>g.onclick=()=>add(+g.dataset.i))}
+function add(i){let d;do{d=Math.floor(Math.random()*N)}while(d==i);Q[i].push({d,t:tick});log.textContent+=`PC ${NM[i]}: PC ${NM[d]}에게 보낼 데이터 생김\n`;log.scrollTop=1e9;draw()}
+let last=0,tick=0;function loop(t){if(!run_)return;if(t-last>45){last=t;tick++;
+if(!state){const i=Math.round(pos)%N;if(Math.abs(pos-Math.round(pos))<1e-6&&Q[i].length){const q=Q[i].shift();state={src:i,dst:q.d,seen:false,start:pos};const w=Math.round((tick-q.t)/10);maxw=Math.max(maxw,w);mw.textContent=maxw;log.textContent+=`PC ${NM[i]}: 토큰 잡음! → PC ${NM[q.d]}에게 프레임 보냄\n`;log.scrollTop=1e9}else pos=+(pos+0.1).toFixed(1)}
+else{pos=+(pos+0.1).toFixed(1);const i=Math.round(pos)%N;if(Math.abs(pos-Math.round(pos))<1e-6){if(i==state.dst&&!state.seen){state.seen=true;log.textContent+=`  PC ${NM[i]}: 내 것이다! 복사해 두고 프레임은 계속 돌려보냄\n`}if(i==state.src&&pos-state.start>0.5){log.textContent+=`  PC ${NM[i]}: 프레임이 돌아옴 → 지우고 토큰을 다음 PC에 넘김\n`;state=null;done++;dn.textContent=done;pos=+(pos+0.1).toFixed(1)}log.scrollTop=1e9}}
+if(pos>=N)pos=+(pos-N).toFixed(1);draw()}requestAnimationFrame(loop)}
+go.onclick=()=>{run_=!run_;go.textContent=run_?"멈춤":"시작";if(run_)requestAnimationFrame(loop)};all.onclick=()=>{for(let i=0;i<N;i++)add(i)};rs.onclick=reset;reset();
+</script></body></html>

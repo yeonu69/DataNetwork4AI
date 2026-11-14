@@ -1,0 +1,24 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>해밍 코드 오류 정정 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css">
+<style>.cw{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.cw div{width:58px;text-align:center;border:2px solid var(--line);border-radius:8px;padding:4px 0;cursor:pointer;background:#fff}
+.cw div b{display:block;font-size:22px;font-family:monospace}.cw div small{font-size:11px;color:#666}.cw .p{background:#fff7e0;border-color:#e69500}.cw .d{background:#efe9ff;border-color:#9b86d9}.cw .x{background:#ffd9d9!important;border-color:#d9534f!important}.cw .fix{background:#d6f5e3!important;border-color:#2e8b57!important}</style></head><body>
+<header><div class="ch">6장 시뮬레이터</div><h1>해밍 코드 오류 정정</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>보낼 데이터 4비트를 위쪽 칸을 눌러 정합니다. 해밍(7,4) 부호는 여기에 검사 비트 3개(주황)를 붙여 7비트로 보냅니다.</li><li>'전송 중' 줄에서 아무 비트나 하나 눌러 잡음으로 뒤집어 봅니다(빨강).</li><li>받는 쪽은 검사 3개를 다시 계산해 '신드롬'을 구합니다. 신드롬을 2진수로 읽은 값이 바로 틀린 비트의 위치입니다.</li><li>두 비트를 뒤집으면 엉뚱한 위치를 고쳐 버리는 것도 확인하세요. 해밍(7,4)는 1비트 오류까지만 고칩니다.</li></ol></div>
+<div class="card"><b>① 보낼 데이터 4비트</b><div class="cw" id="dt"></div>
+<b>② 전송 중 (눌러서 비트 뒤집기)</b><div class="cw" id="tx"></div>
+<div class="row"><button class="sec" id="cl">잡음 없애기</button><button class="sec" id="r1">무작위 1비트 오류</button></div>
+<b>③ 받는 쪽 검사</b><table id="ck"></table><div class="cw" id="rx"></div><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 해밍 코드는 위치 1, 2, 4에 검사 비트를 두고, 각 검사 비트가 서로 다른 위치 묶음을 짝수 패리티로 지킵니다.<br>• 받는 쪽에서 세 검사의 실패 여부를 2진수로 읽으면(신드롬) 틀린 비트의 위치가 곧바로 나와 스스로 고칠 수 있습니다.<br>• 이더넷의 FCS(CRC)는 오류를 '검출'만 하고 버리지만, 메모리(ECC)와 고속 링크의 FEC는 이렇게 '정정'까지 합니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+let D=[1,0,1,1],flip=new Set();const G={1:[1,3,5,7],2:[2,3,6,7],4:[4,5,6,7]};
+function enc(){const c=Array(8).fill(0);[3,5,6,7].forEach((p,i)=>c[p]=D[i]);[1,2,4].forEach(p=>c[p]=G[p].filter(x=>x!=p).reduce((a,x)=>a^c[x],0));return c}
+function run(){dt.innerHTML=D.map((b,i)=>`<div class="d" data-i="${i}"><small>d${i+1}</small><b>${b}</b></div>`).join("");dt.querySelectorAll("div").forEach(e=>e.onclick=()=>{D[+e.dataset.i]^=1;run()});
+const c=enc(),r=c.slice();flip.forEach(p=>r[p]^=1);
+tx.innerHTML=[1,2,3,4,5,6,7].map(p=>`<div class="${[1,2,4].includes(p)?"p":"d"}${flip.has(p)?" x":""}" data-p="${p}"><small>위치 ${p}<br>${[1,2,4].includes(p)?"검사 p"+p:"데이터"}</small><b>${r[p]}</b></div>`).join("");tx.querySelectorAll("div").forEach(e=>e.onclick=()=>{const p=+e.dataset.p;flip.has(p)?flip.delete(p):flip.add(p);run()});
+let syn=0,h="<tr><th>검사</th><th>지키는 위치</th><th>받은 값들</th><th>1의 개수</th><th>결과</th></tr>";[1,2,4].forEach(p=>{const v=G[p].map(x=>r[x]),s=v.reduce((a,b)=>a+b,0)%2;if(s)syn+=p;h+=`<tr><td>p${p}</td><td>${G[p].join(", ")}</td><td class="mono">${v.join(" ")}</td><td>${v.reduce((a,b)=>a+b,0)}</td><td class="${s?"bad":"ok"}">${s?"홀수 → 실패 (+"+p+")":"짝수 → 통과"}</td></tr>`});ck.innerHTML=h;
+const fixd=r.slice();if(syn)fixd[syn]^=1;const out=[3,5,6,7].map(p=>fixd[p]),good=out.join("")==D.join("");
+rx.innerHTML=[1,2,3,4,5,6,7].map(p=>`<div class="${[1,2,4].includes(p)?"p":"d"}${syn==p?" fix":""}"><small>위치 ${p}</small><b>${fixd[p]}</b></div>`).join("");
+log.textContent=`신드롬 = ${syn.toString(2).padStart(3,"0")}(2진수) = ${syn}\n`+(syn?`→ 위치 ${syn}의 비트가 틀렸다고 판단하고 뒤집어 고칩니다(초록).\n`:"→ 오류 없음.\n")+`꺼낸 데이터: ${out.join("")}  (원래 ${D.join("")}) ${good?"✅ 정확히 복원":"❌ 잘못 복원! 2비트 이상 오류는 고치지 못하고 오히려 망가뜨립니다."}`}
+cl.onclick=()=>{flip.clear();run()};r1.onclick=()=>{flip.clear();flip.add(1+Math.floor(Math.random()*7));run()};run();
+</script></body></html>

@@ -1,0 +1,20 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>이더넷 프레임 만들기 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">6장 시뮬레이터</div><h1>이더넷 프레임 만들기</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>데이터(페이로드) 크기 슬라이더를 움직이면 프레임의 각 필드가 실제 비율대로 그려집니다.</li><li>데이터를 10바이트처럼 아주 작게 하면 최소 크기(64바이트)를 맞추려고 패딩이 붙는 것을 확인합니다.</li><li>1500바이트를 넘기면 일반 이더넷에서는 보낼 수 없다는 경고가 뜹니다. [점보 프레임]을 켜면 9000바이트까지 됩니다.</li><li>[VLAN 태그]를 켜면 4바이트가 끼어드는 위치(출발지 MAC 뒤)를 봅니다. 아래 표에서 선 위의 실제 효율과 초당 프레임 수를 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><label>데이터 크기 <input type="range" id="pl" min="0" max="9000" value="1500"> <b id="plv"></b> 바이트</label><label><input type="checkbox" id="jb"> 점보 프레임</label><label><input type="checkbox" id="vl"> VLAN 태그(802.1Q)</label></div>
+<svg class="stage" id="sv" viewBox="0 0 800 160"></svg><div id="msg" style="margin:6px 0"></div><table id="tb"></table></div>
+<div class="key"><b>핵심 3줄</b><br>• 이더넷 프레임 = 목적지 MAC(6) + 출발지 MAC(6) + 타입(2) + 데이터(46~1500) + FCS(4). 선 위에는 앞에 프리앰블 8바이트, 뒤에 쉬는 간격(IFG) 12바이트가 더 붙습니다.<br>• 데이터가 46바이트보다 작으면 패딩으로 채워 최소 64바이트를 맞춥니다. 옛 CSMA/CD에서 충돌을 확실히 감지하기 위한 규칙입니다.<br>• 작은 프레임은 효율이 낮고 초당 처리할 수가 폭증하므로, 장비 성능은 '64바이트 프레임을 초당 몇 개 처리하는가(pps)'로 따집니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+function run(){const P=+pl.value,J=jb.checked,V=vl.checked;plv.textContent=P;const max=J?9000:1500,pad=Math.max(0,46-(V?4:0)-P);
+const F=[["프리앰블+SFD",8,"#bbb"],["목적지 MAC",6,"#6b4fbb"],["출발지 MAC",6,"#9b86d9"]].concat(V?[["VLAN",4,"#00a3a3"]]:[],[["타입",2,"#e69500"],["데이터",Math.min(P,max),"#2e8b57"]],pad?[["패딩",pad,"#e6457a"]]:[],[["FCS",4,"#3a86ff"],["IFG(쉼)",12,"#ddd"]]);
+const tot=F.reduce((a,f)=>a+f[1],0),fr=tot-20;let x=10,s="";const W=780,sc=Math.max(tot,120);
+F.forEach(([n,b,c])=>{const w=Math.max(b/sc*W,2);s+=`<rect x="${x}" y="40" width="${w}" height="50" fill="${c}" stroke="#fff"/>`;if(w>34)s+=`<text x="${x+w/2}" y="62" text-anchor="middle" font-size="11" fill="${c=="#ddd"||c=="#bbb"?"#333":"#fff"}" font-weight="700">${n}</text><text x="${x+w/2}" y="79" text-anchor="middle" font-size="11" fill="${c=="#ddd"||c=="#bbb"?"#333":"#fff"}">${b}B</text>`;x+=w});
+let lx=10;F.forEach(([n,b,c])=>{s+=`<rect x="${lx}" y="110" width="10" height="10" fill="${c}"/><text x="${lx+13}" y="119" font-size="11">${n} ${b}</text>`;lx+=n.length*11+40});
+s+=`<text x="10" y="25" font-size="12" fill="#666">← 먼저 나가는 쪽 · 프레임 ${fr}바이트 (선 위 전체 ${tot}바이트)</text>`;sv.innerHTML=s;
+msg.innerHTML=P>max?`<span class="bad">⚠️ 데이터 ${P}바이트는 MTU ${max}를 넘습니다. 이대로는 보낼 수 없고, IP가 쪼개거나(10장) 점보 프레임을 써야 합니다. 그림은 ${max}바이트까지만 그렸습니다.</span>`:pad?`<span style="color:#e6457a">패딩 ${pad}바이트를 붙여 최소 프레임 64바이트를 맞췄습니다.</span>`:`<span class="ok">정상 프레임입니다.</span>`;
+const data=Math.min(P,max),eff=data/tot;let h=`<tr><th>링크</th><th>선 위 효율 (데이터 ÷ 전체)</th><th>초당 프레임 수</th><th>실제 데이터 속도</th></tr>`;
+[[1e9,"1 Gbps"],[1e10,"10 Gbps"],[1e11,"100 Gbps"],[4e11,"400 Gbps"]].forEach(([r,n])=>{const pps=r/(tot*8);h+=`<tr><td>${n}</td><td>${(eff*100).toFixed(1)}%</td><td>${pps>=1e6?(pps/1e6).toFixed(2)+" 백만":Math.round(pps).toLocaleString()}</td><td>${(r*eff/1e9).toFixed(2)} Gbps</td></tr>`});tb.innerHTML=h}
+pl.oninput=jb.onchange=vl.onchange=run;run();
+</script></body></html>
