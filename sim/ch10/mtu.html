@@ -1,0 +1,28 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MTU와 단편화 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">10장 시뮬레이터</div><h1>MTU와 단편화</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>PC에서 서버까지 링크 세 개를 지나는데, 가운데 링크(예: VPN 터널)의 MTU가 작습니다. 보낼 IP 패킷 크기와 가운데 MTU를 정합니다.</li><li>DF(쪼개지 마) 비트를 끈 채 [보내기]: 라우터가 패킷을 여러 조각으로 나눕니다. 표에서 각 조각의 길이, 오프셋(8바이트 단위), MF(뒤에 더 있음) 플래그를 읽습니다.</li><li>DF를 켜고 [보내기]: 라우터는 쪼개지 않고 버린 뒤 "MTU가 1400이니 줄여 와"라는 ICMP를 돌려보내고, PC가 크기를 줄여 다시 보냅니다(경로 MTU 탐색).</li><li>[ICMP 차단]까지 켜면 PC는 이유도 모른 채 큰 패킷만 사라지는 'MTU 블랙홀'에 빠집니다.</li></ol></div>
+<div class="card"><table><tr><td>IP 패킷 크기</td><td><input type="range" id="L" min="576" max="1500" step="4" value="1500"> <b id="Lv"></b> 바이트 (헤더 20 포함)</td></tr><tr><td>가운데 링크 MTU</td><td><select id="M"><option>576</option><option>1280</option><option selected>1400</option><option>1500</option></select></td></tr></table>
+<div class="row"><label><input type="checkbox" id="df"> DF 비트 켜기 (쪼개지 마)</label><label><input type="checkbox" id="ib"> ICMP 차단 (방화벽)</label><button id="go">보내기</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 220"></svg><table id="tb" style="margin-top:8px"></table><div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• MTU는 링크 하나가 한 번에 실을 수 있는 IP 패킷의 최대 크기입니다. 이더넷은 보통 1500바이트, 터널을 지나면 헤더만큼 줄어듭니다.<br>• 더 큰 패킷은 IPv4 라우터가 8바이트 단위로 쪼개고(오프셋, MF), 받는 쪽에서만 다시 붙입니다. 조각 하나만 잃어도 전체를 다시 보내야 해 비효율적입니다.<br>• 그래서 요즘은 DF를 켜고 ICMP 알림으로 경로 MTU를 찾아 처음부터 작게 보냅니다. ICMP를 막으면 MTU 블랙홀이 생깁니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const NX=[[60,"PC"],[300,"라우터 1"],[520,"라우터 2"],[740,"서버"]];
+function base(){let s="";const mt=["1500",M.value+" (터널)","1500"];for(let i=0;i<3;i++){s+=`<line x1="${NX[i][0]}" y1="60" x2="${NX[i+1][0]}" y2="60" stroke="${i==1?"#e69500":"#cfc6ea"}" stroke-width="${i==1?4:8}"/><text x="${(NX[i][0]+NX[i+1][0])/2}" y="45" text-anchor="middle" font-size="12" fill="${i==1?"#e69500":"#666"}">MTU ${mt[i]}</text>`}
+NX.forEach(([x,n])=>s+=`<rect x="${x-45}" y="44" width="90" height="34" rx="7" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="${x}" y="66" text-anchor="middle" font-weight="700" font-size="13">${n}</text>`);return s}
+function frags(len,mtu){const data=len-20,per=Math.floor((mtu-20)/8)*8,out=[];let off=0;while(off<data){const d=Math.min(per,data-off);out.push({len:d+20,off:off/8,mf:off+d<data?1:0});off+=d}return out}
+function run(){Lv.textContent=L.value;const len=+L.value,mtu=+M.value;let s=base(),L2="";
+if(len<=1500&&len<=mtu){s+=`<rect x="80" y="110" width="${len/9000*640+20}" height="24" fill="#6b4fbb"/><text x="90" y="160" font-size="12">패킷이 그대로 통과합니다.</text>`;tb.innerHTML="";log.textContent="모든 링크의 MTU보다 작아 쪼갤 필요가 없습니다.";sv.innerHTML=s;return}
+if(len>1500){L2+=`⚠️ ${len}바이트는 첫 링크 MTU 1500보다 큽니다. 실제로는 PC가 처음부터 쪼갭니다. 여기서는 터널 구간의 동작에 집중합니다.\n`}
+if(!df.checked){const F=frags(len,mtu);let x=80;F.forEach((f,i)=>{const w=Math.max(18,f.len/len*640);s+=`<rect x="${x}" y="110" width="${w-3}" height="24" fill="${["#6b4fbb","#e69500","#2e8b57","#e6457a","#3a86ff","#00a3a3","#8d6e63","#b5179e"][i%8]}"/>`;if(w>40)s+=`<text x="${x+4}" y="127" font-size="10.5" fill="#fff">${f.len}</text>`;x+=w});
+s+=`<text x="80" y="160" font-size="12">라우터 1이 ${F.length}조각으로 나눔 → 서버가 오프셋을 보고 다시 조립</text>`;
+tb.innerHTML="<tr><th>조각</th><th>전체 길이</th><th>데이터</th><th>오프셋(×8)</th><th>MF</th></tr>"+F.map((f,i)=>`<tr><td>${i+1}</td><td>${f.len}</td><td>${f.len-20}</td><td>${f.off} (= ${f.off*8}바이트 위치)</td><td>${f.mf}</td></tr>`).join("");
+L2+=`데이터 ${len-20}바이트를 조각당 ${Math.floor((mtu-20)/8)*8}바이트씩(8의 배수) 나눴습니다. 마지막 조각만 MF=0입니다.\n조각마다 IP 헤더 20바이트가 새로 붙어 총 ${F.reduce((a,f)=>a+f.len,0)}바이트가 되었고, 하나만 잃어도 패킷 전체가 다시 와야 합니다.`}
+else{s+=`<text x="300" y="110" text-anchor="middle" font-size="26" fill="#d9534f">✕</text><text x="300" y="135" text-anchor="middle" font-size="12" fill="#d9534f">DF라서 버림</text>`;
+if(ib.checked){s+=`<text x="300" y="175" text-anchor="middle" font-size="12" fill="#d9534f">ICMP 알림이 방화벽에 막힘 → PC는 아무것도 모름</text>`;tb.innerHTML="";L2+=`라우터 1이 ICMP "Fragmentation Needed (MTU ${mtu})"를 보냈지만 방화벽이 막았습니다.\nPC는 계속 같은 크기로 재전송 → 작은 패킷(로그인 화면)은 되는데 큰 패킷(파일, 큰 웹 페이지)만 끝없이 멈추는 'MTU 블랙홀'입니다.\n해결: ICMP 타입 3 코드 4는 막지 않기, 또는 TCP MSS를 줄이기(MSS 클램핑).`}
+else{s+=`<path d="M290 150 Q180 190 70 90" stroke="#e69500" stroke-width="2" fill="none" stroke-dasharray="5 4"/><text x="160" y="205" font-size="12" fill="#e69500">ICMP: "MTU ${mtu}로 줄여 와"</text><rect x="420" y="110" width="${mtu/9000*640}" height="24" fill="#2e8b57"/><text x="420" y="160" font-size="12" fill="#2e8b57">PC가 ${mtu}바이트 이하로 다시 보냄 → 통과</text>`;tb.innerHTML="";
+L2+=`1) PC: ${len}바이트, DF=1로 보냄\n2) 라우터 1: 다음 링크 MTU ${mtu}보다 크고 DF=1이라 쪼갤 수 없음 → 버리고 ICMP "Fragmentation Needed, MTU=${mtu}" 회신\n3) PC: 이 목적지의 경로 MTU를 ${mtu}로 기억하고, 데이터를 ${mtu}바이트 이하로 나눠 다시 보냄 ✅ (경로 MTU 탐색, PMTUD)`}}
+sv.innerHTML=s;log.textContent=L2}
+L.oninput=M.onchange=df.onchange=ib.onchange=run;go.onclick=run;run();
+</script></body></html>

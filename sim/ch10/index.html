@@ -24,5 +24,5 @@ else{st.querySelector(`#h${i} rect`).setAttribute('fill',last?'#d6f5e3':'#fff2d6
 await mv(i,0,130,last?"Echo Reply":"Time Exceeded",last?"#2e8b57":"#e69500");
 out.textContent+=`\n${ttl}  ${H[i][1].padEnd(13)} ${rtt} ms   ${last?'← 목적지 도착 (ICMP Echo Reply)':'← '+H[i][0]+'에서 TTL 0 (ICMP Time Exceeded)'}`}
 if(last){done=true;out.textContent+="\n\n추적 완료: "+ttl+"홉"}busy=false}
-go.onclick=probe;all.onclick=async()=>{while(!done){await probe()}};rs.onclick=()=>{if(busy)return;ttl=0;done=false;draw();out.textContent="$ traceroute 8.8.8.8"};draw();
+go.onclick=probe;all.onclick=async()=>{while(!done){if(busy){await sleep(100);continue}await probe()}};rs.onclick=()=>{if(busy)return;ttl=0;done=false;draw();out.textContent="$ traceroute 8.8.8.8"};draw();
 </script></body></html>

@@ -1,0 +1,35 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARP 요청과 캐시 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">10장 시뮬레이터</div><h1>ARP 요청과 캐시</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>PC A에서 ping을 보낼 목적지를 고르고 [ping]을 누릅니다. ARP 캐시가 비어 있으면 먼저 "이 IP 누구야?"를 브로드캐스트합니다.</li><li>모두 요청을 받지만 주인만 자기 MAC을 담아 답합니다. 답은 A의 ARP 캐시(오른쪽 표)에 저장됩니다.</li><li>같은 목적지로 다시 ping 하면 이번에는 ARP 없이 바로 보냅니다. [시간 +60초]를 몇 번 누르면 캐시가 만료되어 다시 묻게 됩니다.</li><li>8.8.8.8처럼 다른 네트워크로 보낼 때는 8.8.8.8이 아니라 게이트웨이의 MAC을 묻는다는 점, [공격자의 ARP 스푸핑]이 캐시를 어떻게 오염시키는지도 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>목적지 <select id="dst"><option value="192.168.0.50">192.168.0.50 (PC B)</option><option value="192.168.0.60">192.168.0.60 (프린터)</option><option value="192.168.0.99">192.168.0.99 (없는 주소)</option><option value="8.8.8.8">8.8.8.8 (인터넷)</option></select></label><button id="pg">ping</button><button class="sec" id="tm">시간 +60초</button><button class="sec" id="cl">arp -d (캐시 비우기)</button><button class="sec" id="sp" style="border-color:#d9534f;color:#d9534f">공격자의 ARP 스푸핑</button></div>
+<div class="grid2"><svg class="stage" id="sv" viewBox="0 0 440 330"></svg><div><b>PC A의 ARP 캐시</b> <span class="mut" id="clk"></span><table id="tb" style="margin-top:4px"></table></div></div>
+<div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• ARP는 같은 네트워크 안에서 "이 IP의 MAC이 뭐야?"를 브로드캐스트로 묻고, 주인이 유니캐스트로 답하는 프로토콜입니다.<br>• 답은 ARP 캐시에 잠시(수십 초~수 분) 저장되어, 매번 묻지 않아도 됩니다. 다른 네트워크로 갈 때는 게이트웨이의 MAC을 묻습니다.<br>• ARP에는 인증이 없어서, 공격자가 가짜 답을 보내면 캐시가 오염되고 통신이 공격자를 거치게 됩니다(ARP 스푸핑, 14장).</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const H={A:["PC A","192.168.0.23","3c:9c:0f:12:ab:cd",80,60],B:["PC B","192.168.0.50","3c:9c:0f:34:56:78",360,60],P:["프린터","192.168.0.60","00:80:77:aa:00:60",360,170],G:["공유기(GW)","192.168.0.1","88:36:6c:aa:bb:cc",80,270],X:["공격자","192.168.0.66","de:ad:be:ef:00:66",360,270]};
+const SW=[220,165];let cache={},now=0,busy=false;const TTL=120;
+function draw(hl={}){let s="";for(const k in H){const[n,ip,m,x,y]=H[k];s+=`<line x1="${x}" y1="${y}" x2="${SW[0]}" y2="${SW[1]}" stroke="#cfc6ea" stroke-width="4"/>`}
+s+=`<rect x="${SW[0]-40}" y="${SW[1]-18}" width="80" height="36" rx="8" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="${SW[0]}" y="${SW[1]+5}" text-anchor="middle" font-weight="700" font-size="13">스위치</text>`;
+for(const k in H){const[n,ip,m,x,y]=H[k];s+=`<rect x="${x-62}" y="${y-28}" width="124" height="56" rx="8" fill="${hl[k]||"#fff"}" stroke="${k=="X"?"#d9534f":"#9b86d9"}" stroke-width="2"/><text x="${x}" y="${y-8}" text-anchor="middle" font-weight="700" font-size="13">${n}</text><text x="${x}" y="${y+8}" text-anchor="middle" font-size="10.5">${ip}</text><text x="${x}" y="${y+21}" text-anchor="middle" font-size="9.5" fill="#666">${m}</text>`}
+sv.innerHTML=s+`<g id="fx"></g>`}
+function tbl(){clk.textContent=`(시각 ${now}초, 수명 ${TTL}초)`;const e=Object.entries(cache);tb.innerHTML="<tr><th>IP 주소</th><th>MAC 주소</th><th>남은 시간</th></tr>"+(e.length?e.map(([ip,[m,t,bad]])=>`<tr${bad?' style="background:#ffd9d9"':""}><td class="mono">${ip}</td><td class="mono">${m}${bad?" ⚠️":""}</td><td>${t-now}초</td></tr>`).join(""):'<tr><td colspan="3" class="mut">비어 있음</td></tr>')}
+const wait=t=>new Promise(r=>setTimeout(r,t));
+function pkt(a,b,c,txt,T=550){const g=document.getElementById("fx");const e=document.createElementNS("http://www.w3.org/2000/svg","g");e.innerHTML=`<circle r="9" fill="${c}"/><text y="-12" text-anchor="middle" font-size="10" fill="${c}" font-weight="700">${txt}</text>`;g.appendChild(e);
+const pts=[[H[a][3],H[a][4]],SW,[H[b][3],H[b][4]]];return new Promise(r=>{const t0=performance.now();function f(t){const u=Math.min(1,(t-t0)/T),seg=u<.5?0:1,v=u<.5?u*2:(u-.5)*2;const p=pts[seg],q=pts[seg+1];e.setAttribute("transform",`translate(${p[0]+(q[0]-p[0])*v},${p[1]+(q[1]-p[1])*v})`);u<1?requestAnimationFrame(f):(e.remove(),r())}requestAnimationFrame(f)})}
+const say=m=>{log.textContent+=m+"\n";log.scrollTop=1e9};
+pg.onclick=async()=>{if(busy)return;busy=true;draw();const d=dst.value,local=d.startsWith("192.168.0."),q=local?d:"192.168.0.1";
+say(`\n$ ping ${d}`);if(!local)say(`  ${d}는 다른 네트워크 → 게이트웨이 192.168.0.1의 MAC이 필요`);
+if(cache[q]){say(`  ARP 캐시에 ${q} → ${cache[q][0]} 있음. ARP 없이 바로 보냄`)}else{say(`  캐시에 없음 → ARP 요청 브로드캐스트: "Who has ${q}? Tell 192.168.0.23"`);
+await Promise.all(["B","P","G","X"].map(k=>pkt("A",k,"#e69500","ARP 요청")));const own=Object.keys(H).find(k=>H[k][1]==q);
+if(!own){say(`  아무도 답하지 않음… (3번 재시도 후) ping 실패: "대상 호스트에 연결할 수 없습니다"`);busy=false;return}
+draw({[own]:"#d6f5e3"});say(`  ${H[own][0]}만 답함(유니캐스트): "${q} is at ${H[own][2]}". 나머지는 무시`);await pkt(own,"A","#2e8b57","ARP 응답");cache[q]=[H[own][2],now+TTL];tbl()}
+const tgt=local?Object.keys(H).find(k=>H[k][1]==q):"G";const real=Object.keys(H).find(k=>H[k][2]==cache[q][0]);
+await pkt("A",real,"#6b4fbb","ICMP");if(real=="X"){say(`  ⚠️ 프레임이 공격자에게 갔습니다! 공격자는 내용을 엿본 뒤 진짜 ${H[tgt][0]}에게 넘겨 줄 수도 있습니다(중간자 공격).`);await pkt("X",tgt,"#d9534f","몰래 전달")}
+if(!local)say(`  공유기가 인터넷으로 전달 → 응답 수신`);say(`  응답 수신 ✅`);draw();busy=false};
+tm.onclick=()=>{now+=60;for(const k in cache)if(cache[k][1]<=now){say(`[${now}초] ${k} 캐시 항목 만료 → 다음엔 다시 물어야 함`);delete cache[k]}tbl()};
+cl.onclick=()=>{cache={};say("$ arp -d *  → 캐시를 비웠습니다");tbl()};
+sp.onclick=async()=>{if(busy)return;busy=true;draw({X:"#ffd9d9"});say(`\n공격자: 아무도 묻지 않았는데 "192.168.0.1 is at de:ad:be:ef:00:66"라는 가짜 ARP 응답을 PC A에게 계속 보냄`);await pkt("X","A","#d9534f","가짜 응답");cache["192.168.0.1"]=["de:ad:be:ef:00:66",now+TTL,1];tbl();say("PC A의 캐시가 오염되었습니다. 이제 8.8.8.8로 ping 해 보세요.");draw();busy=false};
+draw();tbl();
+</script></body></html>
