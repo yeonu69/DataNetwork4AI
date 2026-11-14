@@ -1,0 +1,20 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>라우팅 테이블과 최장 일치 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">11장 시뮬레이터</div><h1>라우팅 테이블과 최장 일치</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>라우터에 도착한 패킷의 목적지 IP를 입력하거나 예시 버튼을 누릅니다.</li><li>라우팅 테이블에서 목적지와 '앞부분이 일치하는' 줄이 모두 노랗게 표시됩니다.</li><li>그중 프리픽스가 가장 긴(가장 구체적인) 줄이 초록으로 선택되고, 그 줄의 다음 홉으로 패킷이 나갑니다.</li><li>아무 구체적인 줄에도 맞지 않는 주소(예: 8.8.8.8)는 0.0.0.0/0 기본 경로로 나가는 것을 확인합니다. 아래에서 경로를 추가해 결과를 바꿔 보세요.</li></ol></div>
+<div class="card"><div class="row"><input type="text" id="ip" class="mono" value="10.1.2.200" style="width:150px"><button id="go">찾기</button><button class="sec" data-v="10.1.2.200">10.1.2.200</button><button class="sec" data-v="10.1.2.5">10.1.2.5</button><button class="sec" data-v="10.1.9.9">10.1.9.9</button><button class="sec" data-v="10.77.0.1">10.77.0.1</button><button class="sec" data-v="192.168.0.40">192.168.0.40</button><button class="sec" data-v="8.8.8.8">8.8.8.8</button></div>
+<table id="tb"></table><div class="row"><input type="text" id="np" class="mono" placeholder="예: 10.1.2.192/26" style="width:150px"><input type="text" id="nh" placeholder="다음 홉 이름" style="width:120px"><button class="sec" id="add">경로 추가</button></div><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 라우터는 목적지 IP를 라우팅 테이블의 각 줄(네트워크/프리픽스)과 비교해 일치하는 줄을 모두 찾습니다.<br>• 여러 줄이 맞으면 프리픽스가 가장 긴 줄, 즉 가장 좁고 구체적인 경로를 고릅니다(최장 일치, Longest Prefix Match).<br>• 0.0.0.0/0은 모든 주소와 0비트만 일치하는 가장 짧은 경로라서, 다른 줄이 하나도 없을 때만 쓰이는 기본 경로가 됩니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+let RT=[["0.0.0.0/0","ISP 라우터 (기본 경로)","Gi0/0"],["10.0.0.0/8","R2 (본사 전체)","Gi0/1"],["10.1.0.0/16","R3 (서울 캠퍼스)","Gi0/2"],["10.1.2.0/24","R4 (공학관)","Gi0/3"],["10.1.2.128/25","R5 (AI 실습실)","Gi0/4"],["192.168.0.0/24","직접 연결 (사무실 LAN)","Gi0/5"]];
+const toN=s=>{const p=s.trim().split(".").map(Number);if(p.length!=4||p.some(x=>isNaN(x)||x<0||x>255))return null;return((p[0]<<24)|(p[1]<<16)|(p[2]<<8)|p[3])>>>0};
+const bin=n=>n.toString(2).padStart(32,"0");
+function run(){const d=toN(ip.value);if(d==null){log.textContent="IP 주소를 확인하세요.";return}const db=bin(d);let best=-1,bl=-1;
+const M=RT.map(([pf],i)=>{const[a,l]=pf.split("/"),n=toN(a),L=+l;const m=L?((0xffffffff<<(32-L))>>>0):0;const ok=((d&m)>>>0)==((n&m)>>>0);if(ok&&L>bl){bl=L;best=i}return[ok,L,n]});
+tb.innerHTML="<tr><th>목적지 네트워크</th><th>다음 홉</th><th>인터페이스</th><th>비교 (앞 L비트)</th><th>결과</th></tr>"+RT.map(([pf,nh,ifc],i)=>{const[ok,L,n]=M[i];const nb=bin(n);const cmp=`<span style="color:${ok?"#2e8b57":"#d9534f"}">${db.slice(0,L)||"(0비트)"}</span><span style="color:#bbb">${db.slice(L)}</span>`;
+return `<tr style="background:${i==best?"#d6f5e3":ok?"#fff7d6":"#fff"}"><td class="mono">${pf}</td><td>${nh}</td><td>${ifc}</td><td class="mono" style="font-size:11px">${cmp}</td><td>${i==best?"✅ 선택 (/"+L+", 가장 김)":ok?"일치 (/"+L+")":"불일치"}</td></tr>`}).join("");
+const n=M.filter(x=>x[0]).length;log.textContent=`목적지 ${ip.value}: 일치하는 줄 ${n}개 → 그중 가장 긴 /${bl} 선택 → ${RT[best][1]}(${RT[best][2]})로 전달`}
+go.onclick=run;ip.oninput=run;document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{ip.value=b.dataset.v;run()});
+add.onclick=()=>{const m=np.value.trim().match(/^(\d+\.\d+\.\d+\.\d+)\/(\d+)$/);if(!m||toN(m[1])==null||+m[2]>32){log.textContent="경로를 10.1.2.192/26 형식으로 입력하세요.";return}RT.push([np.value.trim(),nh.value||"새 라우터","Gi0/"+RT.length]);RT.sort((a,b)=>+a[0].split("/")[1]-+b[0].split("/")[1]);run()};run();
+</script></body></html>

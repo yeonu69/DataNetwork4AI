@@ -1,0 +1,26 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ECMP와 코끼리 흐름 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">11장 시뮬레이터</div><h1>ECMP와 코끼리 흐름</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>리프 스위치에서 스파인으로 가는 길이 4개(같은 비용) 있습니다. 흐름(통신 한 건)마다 주소·포트를 해시해서 길 하나를 고릅니다(ECMP).</li><li>[웹 트래픽]을 고르면 작은 흐름(생쥐) 수백 개가 고르게 퍼져 링크 4개가 비슷하게 찹니다.</li><li>[AI 학습 트래픽]을 고르면 아주 큰 흐름(코끼리) 몇 개뿐이라, 해시가 두세 개를 같은 길에 몰아 넣는 일이 자주 생깁니다. [다시 해시]를 여러 번 눌러 보세요.</li><li>[패킷 단위 분산]이나 [혼잡 인지 분산]으로 바꿔 가장 느린 링크(완료 시간)가 어떻게 달라지는지 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><button data-t="web">웹 트래픽 (생쥐 300개)</button><button class="sec" data-t="ai">AI 학습 트래픽 (코끼리 8개)</button></div>
+<div class="row"><button data-m="hash">흐름 해시 (기본 ECMP)</button><button class="sec" data-m="spray">패킷 단위 분산</button><button class="sec" data-m="adapt">혼잡 인지 분산</button><button class="sec" id="re">다시 해시</button></div>
+<canvas id="cv" width="760" height="300"></canvas><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• ECMP는 비용이 같은 여러 길에 흐름을 해시로 나눠 담습니다. 같은 흐름은 늘 같은 길로 가서 순서가 뒤섞이지 않습니다.<br>• 흐름이 많고 작으면 고르게 퍼지지만, AI 학습처럼 거대한 흐름 몇 개뿐이면 해시 충돌로 한 링크만 넘치고 다른 링크는 놉니다.<br>• 가장 느린 링크가 전체 학습 속도를 정하므로, AI 네트워크는 패킷 단위 분산(순서 재조립 필요)이나 혼잡을 보고 길을 고르는 방식을 씁니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+let T="web",M="hash",F=[];const g=cv.getContext('2d'),K=4,CAP=100;
+function gen(){F=[];if(T=="web")for(let i=0;i<300;i++)F.push({s:Math.random()*2.6+0.05,h:Math.floor(Math.random()*K)});else for(let i=0;i<8;i++)F.push({s:45,h:Math.floor(Math.random()*K)})}
+function assign(){const load=Array(K).fill(0),parts=[];if(M=="hash")F.forEach((f,i)=>{load[f.h]+=f.s;parts.push([f.h,f.s,i])});
+else if(M=="spray")F.forEach((f,i)=>{for(let k=0;k<K;k++){load[k]+=f.s/K;parts.push([k,f.s/K,i])}});
+else{[...F].map((f,i)=>[f,i]).sort((a,b)=>b[0].s-a[0].s).forEach(([f,i])=>{const k=load.indexOf(Math.min(...load));load[k]+=f.s;parts.push([k,f.s,i])})}return{load,parts}}
+function draw(){document.querySelectorAll('[data-t]').forEach(b=>b.className=b.dataset.t==T?"":"sec");document.querySelectorAll('[data-m]').forEach(b=>b.className=b.dataset.m==M?"":"sec");
+const{load,parts}=assign(),W=760,H=300;g.clearRect(0,0,W,H);g.font="12px sans-serif";const bx=k=>90+k*165,Y=v=>250-v/200*220;
+g.strokeStyle="#d9534f";g.setLineDash([5,4]);g.beginPath();g.moveTo(70,Y(CAP));g.lineTo(W-10,Y(CAP));g.stroke();g.setLineDash([]);g.fillStyle="#d9534f";g.fillText("링크 용량 100%",W-110,Y(CAP)-4);
+const COL=["#6b4fbb","#e69500","#2e8b57","#e6457a","#3a86ff","#00a3a3","#8d6e63","#b5179e"];const acc=Array(K).fill(0);
+parts.forEach(([k,s,i])=>{const y0=acc[k];acc[k]+=s;g.fillStyle=T=="ai"?COL[i%8]:(i%2?"#b9a8ee":"#9b86d9");g.fillRect(bx(k),Y(acc[k]),110,Y(y0)-Y(acc[k])-(T=="ai"?1:0));if(T=="ai"&&Y(y0)-Y(acc[k])>16){g.fillStyle="#fff";g.fillText("🐘"+(i+1),bx(k)+40,Y(acc[k])+14)}});
+load.forEach((v,k)=>{g.fillStyle=v>CAP?"#d9534f":"#333";g.font="bold 13px sans-serif";g.fillText(v.toFixed(0)+"%",bx(k)+40,Y(v)-6);g.font="12px sans-serif";g.fillStyle="#333";g.fillText("스파인 "+(k+1)+" 링크",bx(k)+18,270)});
+const mx=Math.max(...load),mn=Math.min(...load),tm=Math.max(1,mx/CAP);
+log.textContent=`가장 바쁜 링크 ${mx.toFixed(0)}%, 가장 한가한 링크 ${mn.toFixed(0)}%\n`+(T=="ai"?`학습 한 단계는 가장 느린 흐름이 끝나야 끝나므로, 완료 시간 ≈ 이상적인 경우의 ${tm.toFixed(1)}배\n`:"")+
+(M=="hash"?(mx>CAP?"→ 해시 충돌! 코끼리 여러 마리가 한 길에 몰렸습니다. 다른 길이 비어 있어도 옮겨 가지 못합니다.":"→ 흐름이 충분히 많아 해시만으로도 고르게 퍼졌습니다."):M=="spray"?"→ 패킷을 모든 길에 고르게 뿌려 완벽히 균형. 대신 도착 순서가 뒤섞여 받는 쪽 NIC가 재조립해야 합니다(울트라 이더넷 등).":"→ 지금 가장 한가한 길에 큰 흐름부터 배정해 균형을 맞춥니다(스위치가 혼잡 정보를 알아야 함).")}
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{T=b.dataset.t;gen();draw()});document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{M=b.dataset.m;draw()});re.onclick=()=>{gen();draw()};gen();draw();
+</script></body></html>

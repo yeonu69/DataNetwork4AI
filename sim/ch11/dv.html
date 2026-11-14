@@ -1,0 +1,23 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>거리 벡터(RIP) | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">11장 시뮬레이터</div><h1>거리 벡터 라우팅(RIP)</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>처음에는 각 라우터가 자기 바로 옆 이웃까지의 거리만 압니다. 표에서 ∞는 아직 모르는 목적지입니다.</li><li>[한 라운드 교환]을 누를 때마다 모든 라우터가 이웃에게 자기 표를 알려 주고, "이웃까지 거리 + 이웃이 말한 거리"로 표를 고칩니다. 몇 라운드 만에 다 채워지는지(수렴) 봅니다.</li><li>수렴한 뒤 [C-D 링크 끊기]를 누르고 라운드를 반복해 보세요. B와 C가 서로 "D는 나를 거쳐 가면 돼"라고 속이며 거리가 1씩 올라가는 '무한 세기' 문제가 생깁니다.</li><li>[스플릿 호라이즌]을 켜고 같은 실험을 하면, 배운 방향으로는 되돌려 알리지 않아 문제가 금방 사라집니다.</li></ol></div>
+<div class="card"><div class="row"><button id="st">한 라운드 교환</button><button class="sec" id="cut">C-D 링크 끊기</button><button class="sec" id="rs">처음으로</button><label><input type="checkbox" id="sh"> 스플릿 호라이즌</label><span class="pill">라운드</span><b id="rd">0</b></div>
+<svg class="stage" id="sv" viewBox="0 0 800 150"></svg><div id="tbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div><div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 거리 벡터 라우팅은 이웃끼리 "나는 어디까지 몇 홉"이라는 표를 주기적으로 주고받아, 소문으로 전체 길을 알아냅니다(RIP).<br>• 단순하지만 소문이 퍼지는 데 라운드가 걸리고, 링크가 끊기면 잘못된 소문이 돌며 거리가 무한히 커지는 문제가 있습니다(RIP은 16을 ∞로 봄).<br>• 그래서 스플릿 호라이즌 같은 보완책을 쓰고, 큰 망에서는 전체 지도를 직접 그리는 링크 상태 방식(OSPF, 다익스트라)을 씁니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const N=["A","B","C","D","E"],POS={A:[80,75],B:[260,75],C:[440,75],D:[620,75],E:[150,135]};let L,T,R,cutDone;const INF=16;
+function reset(){L=[["A","B",1],["B","C",1],["C","D",1],["A","E",1],["E","B",2]];T={};N.forEach(n=>{T[n]={};N.forEach(d=>T[n][d]=[n==d?0:INF,n==d?"-":""])});L.forEach(([a,b,c])=>{T[a][b]=[c,b];T[b][a]=[c,a]});R=0;cutDone=false;log.textContent="각 라우터는 처음에 이웃만 압니다.";draw()}
+function nb(n){return L.filter(l=>l.includes(n)).map(l=>[l[0]==n?l[1]:l[0],l[2]])}
+function round(){const old=JSON.parse(JSON.stringify(T)),ch=[];N.forEach(n=>{N.forEach(d=>{if(n==d)return;let best=[INF,""];
+nb(n).forEach(([m,c])=>{let v=old[m][d][0];if(sh.checked&&old[m][d][1]==n)v=INF;const t=Math.min(INF,c+v);if(t<best[0])best=[t,m]});
+if(best[0]!=T[n][d][0]||best[1]!=T[n][d][1]){if(old[n][d][0]!=best[0])ch.push(`${n}→${d}: ${old[n][d][0]>=INF?"∞":old[n][d][0]} → ${best[0]>=INF?"∞":best[0]}${best[1]?" (via "+best[1]+")":""}`);T[n][d]=best}})});R++;
+log.textContent=`라운드 ${R}: `+(ch.length?ch.join(", "):"변화 없음 → 수렴 완료 ✅");draw()}
+function draw(){rd.textContent=R;let s="";L.forEach(([a,b,c])=>s+=`<line x1="${POS[a][0]}" y1="${POS[a][1]}" x2="${POS[b][0]}" y2="${POS[b][1]}" stroke="#9b86d9" stroke-width="4"/><text x="${(POS[a][0]+POS[b][0])/2}" y="${(POS[a][1]+POS[b][1])/2-6}" font-size="12" fill="#6b4fbb">${c}</text>`);
+if(cutDone)s+=`<line x1="${POS.C[0]}" y1="75" x2="${POS.D[0]}" y2="75" stroke="#ddd" stroke-width="4" stroke-dasharray="6 5"/><text x="530" y="70" font-size="20" fill="#d9534f">✕</text>`;
+N.forEach(n=>s+=`<circle cx="${POS[n][0]}" cy="${POS[n][1]}" r="20" fill="#fff" stroke="#6b4fbb" stroke-width="2.5"/><text x="${POS[n][0]}" y="${POS[n][1]+5}" text-anchor="middle" font-weight="700">${n}</text>`);sv.innerHTML=s;
+tbs.innerHTML=N.map(n=>`<table style="width:auto;font-size:12.5px"><tr><th colspan="3">라우터 ${n}의 표</th></tr><tr><th>목적지</th><th>거리</th><th>다음</th></tr>${N.filter(d=>d!=n).map(d=>{const[v,h]=T[n][d];return `<tr${d=="D"&&cutDone?' class="hl"':""}><td>${d}</td><td>${v>=INF?"∞":v}</td><td>${v>=INF?"-":h}</td></tr>`}).join("")}</table>`).join("")}
+st.onclick=round;cut.onclick=()=>{if(cutDone)return;L=L.filter(l=>!(l[0]=="C"&&l[1]=="D"));cutDone=true;T.C.D=[INF,""];T.D.C=[INF,""];N.forEach(n=>{});log.textContent="C-D 링크가 끊겼습니다. C는 D로 가는 직접 경로를 지웠지만, 이웃 B는 아직 'D까지 2'라고 믿고 있습니다. 라운드를 진행해 보세요.";draw()};
+rs.onclick=reset;sh.onchange=()=>{};reset();
+</script></body></html>
