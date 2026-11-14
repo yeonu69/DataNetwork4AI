@@ -1,0 +1,29 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>회선 교환과 패킷 교환 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">2장 시뮬레이터</div><h1>회선 교환과 패킷 교환</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>링크 하나는 한 순간에 칸 4개를 실어 나를 수 있습니다. 사용자 수와 '말하는 비율'을 정합니다.</li><li>위쪽 회선 교환은 사용자마다 칸 하나를 미리 예약합니다. 회색 칸은 예약했지만 놀고 있는 칸, 빨간 사람은 자리가 없어 거절된 사용자입니다.</li><li>아래쪽 패킷 교환은 예약 없이, 그 순간 보낼 것이 있는 사람이 칸을 나눠 씁니다. 칸이 모자라면 줄을 서서 기다립니다.</li><li>사용자를 8명, 말하는 비율을 30%로 놓고 두 방식의 활용률, 거절, 대기를 비교해 봅니다.</li></ol></div>
+<div class="card"><div class="row"><label>사용자 수 <input type="range" id="u" min="2" max="10" value="6"> <b id="uv"></b>명</label><label>말하는 비율 <input type="range" id="a" min="10" max="100" step="5" value="35"> <b id="av"></b>%</label><button id="re">새 상황 만들기</button></div>
+<canvas id="cv" width="760" height="420"></canvas>
+<table style="margin-top:8px"><tr><th></th><th>링크 활용률</th><th>거절된 사용자</th><th>평균 대기</th></tr><tr><td>회선 교환</td><td id="c1"></td><td id="c2"></td><td id="c3"></td></tr><tr><td>패킷 교환</td><td id="p1"></td><td id="p2"></td><td id="p3"></td></tr></table></div>
+<div class="key"><b>핵심 3줄</b><br>• 회선 교환은 길을 미리 예약하므로 지연이 일정하지만, 말이 없을 때도 자리를 차지해 낭비가 생기고 자리가 차면 새 사용자를 거절합니다.<br>• 패킷 교환은 필요한 순간에만 나눠 쓰므로 링크를 알뜰하게 쓰고 더 많은 사용자를 받습니다.<br>• 대신 몰리는 순간에는 줄(큐)이 생겨 지연이 들쭉날쭉합니다. 인터넷이 패킷 교환을 고른 이유와 대가가 여기 있습니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const C=4,T=24,COL=["#6b4fbb","#2e8b57","#e69500","#e6457a","#3a86ff","#8d6e63","#00a3a3","#b5179e","#7cb518","#ff7b00"],g=cv.getContext('2d');let act=[];
+function gen(){const U=10,p=+a.value/100;act=[];for(let i=0;i<U;i++){let on=Math.random()<p,row=[];for(let t=0;t<T;t++){if(Math.random()<0.3)on=Math.random()<p;row.push(on)}act.push(row)}}
+function draw(){const U=+u.value;uv.textContent=U;av.textContent=a.value;g.clearRect(0,0,760,420);g.font="12px sans-serif";
+const X=t=>90+t*27,cw=24,ch=16;
+g.fillStyle="#6b4fbb";g.font="bold 13px sans-serif";g.fillText("회선 교환: 칸마다 주인이 정해져 있음",10,16);g.fillText("패킷 교환: 보낼 것이 있는 사람이 나눠 씀",10,226);g.font="12px sans-serif";
+let used=0,tot=0;for(let s=0;s<C;s++){g.fillStyle="#333";g.fillText(`칸 ${s+1}`,40,40+s*20+12);for(let t=0;t<T;t++){tot++;if(s<U&&act[s][t]){used++;g.fillStyle=COL[s]}else g.fillStyle=s<U?"#ddd":"#f4f4f4";g.fillRect(X(t),40+s*20,cw,ch)}}
+const rej=Math.max(0,U-C);g.fillStyle="#333";let ux=90;g.fillText("거절:",40,138+12);for(let i=C;i<U;i++){g.fillStyle="#d9534f";g.beginPath();g.arc(ux+10+(i-C)*26,146,9,0,7);g.fill();g.fillStyle="#fff";g.fillText(i+1,ux+6+(i-C)*26,150)}
+if(!rej){g.fillStyle="#2e8b57";g.fillText("없음",ux,150)}
+g.fillStyle="#666";g.fillText(`(시간 →, 한 칸 = 한 순간)`,90,190);
+c1.textContent=(used/tot*100).toFixed(0)+"%";c2.textContent=rej+"명";c3.textContent="0 (항상 일정)";
+// packet
+let q=[],wsum=0,served=0,pu=0;for(let s=0;s<C;s++){g.fillStyle="#333";g.fillText(`칸 ${s+1}`,40,250+s*20+12)}
+const ql=[];for(let t=0;t<T;t++){for(let i=0;i<U;i++)if(act[i][t])q.push([i,t]);const sv=q.splice(0,C);sv.forEach(([i,t0],s)=>{g.fillStyle=COL[i];g.fillRect(X(t),250+s*20,cw,ch);if(t>t0){g.fillStyle="#fff";g.fillText("⏳",X(t)+5,250+s*20+12)}wsum+=t-t0;served++;pu++});for(let s=sv.length;s<C;s++){g.fillStyle="#f4f4f4";g.fillRect(X(t),250+s*20,cw,ch)}ql.push(q.length)}
+g.fillStyle="#333";g.fillText("대기 줄",40,348+12);ql.forEach((n,t)=>{g.fillStyle=n?"#e69500":"#ddd";g.fillRect(X(t)+4,370-Math.min(n,8)*4,16,Math.max(2,Math.min(n,8)*4));if(n){g.fillStyle="#333";g.fillText(n,X(t)+7,384)}});
+g.fillStyle="#666";g.fillText("⏳ = 기다렸다가 나간 패킷",90,408);
+let y=408;g.fillStyle="#333";g.fillText("사용자:",300,y);for(let i=0;i<U;i++){g.fillStyle=COL[i];g.fillRect(350+i*36,y-10,12,12);g.fillStyle="#333";g.fillText(i+1,365+i*36,y)}
+p1.textContent=(pu/(C*T)*100).toFixed(0)+"%";p2.textContent="0명";p3.textContent=(served?(wsum/served).toFixed(2):0)+" 순간"+(q.length?` (끝나도 ${q.length}개 남음)`:"")}
+u.oninput=draw;a.oninput=()=>{gen();draw()};re.onclick=()=>{gen();draw()};gen();draw();
+</script></body></html>

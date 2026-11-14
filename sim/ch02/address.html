@@ -1,0 +1,24 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>주소 4종 세트 여행 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">2장 시뮬레이터</div><h1>주소 4종 세트 여행</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>내 PC가 www.school.ac.kr 웹 서버에 요청을 보냅니다. 먼저 DNS가 이름을 IP 주소로 바꿔 줬다고 합시다.</li><li>[한 구간 가기]를 누를 때마다 패킷이 다음 구간(링크)으로 넘어가고, 그 구간에서 쓰는 주소 4종 세트가 표에 한 줄씩 쌓입니다.</li><li>노란 칸은 앞 구간과 달라진 값입니다. MAC 주소는 구간마다 바뀌고 IP 주소와 포트는 그대로인지 확인합니다.</li><li>[공유기 NAT 켜기]를 체크하고 다시 해 보면 공유기에서 출발지 IP와 포트까지 바뀌는 모습을 볼 수 있습니다(12장 예고).</li></ol></div>
+<div class="card"><div class="row"><button id="st">한 구간 가기</button><button class="sec" id="rs">처음으로</button><label><input type="checkbox" id="nat"> 공유기 NAT 켜기</label></div>
+<svg class="stage" id="sv" viewBox="0 0 800 170"></svg>
+<div style="overflow:auto"><table id="tb"></table></div>
+<div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 이름(www…)은 사람용, IP 주소는 출발지에서 목적지까지 끝에서 끝까지(end-to-end) 쓰는 주소입니다.<br>• MAC 주소는 한 구간(같은 링크)용입니다. 라우터를 지날 때마다 "이번 구간의 보내는 쪽과 받는 쪽"으로 새로 씁니다.<br>• 포트 번호는 도착한 컴퓨터 안에서 어느 프로그램에게 줄지 고르는 주소입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const ND=[["내 PC","192.168.0.23","3c:9c:0f:12:ab:cd",62],["공유기","192.168.0.1 | 211.36.5.7","88:36:6c:aa:bb:cc | 88:36:6c:aa:bb:cd",235],["ISP 라우터","211.36.5.1 | 10.0.0.1","00:1a:2b:00:00:01 | 00:1a:2b:00:00:02",410],["학교 라우터","10.0.0.2 | 203.237.1.1","00:5e:10:00:00:01 | 00:5e:10:00:00:02",578],["웹 서버","203.237.1.80","f4:8e:38:00:00:80",735]];
+const SEG=[["3c:9c:0f:12:ab:cd","88:36:6c:aa:bb:cc"],["88:36:6c:aa:bb:cd","00:1a:2b:00:00:01"],["00:1a:2b:00:00:02","00:5e:10:00:00:01"],["00:5e:10:00:00:02","f4:8e:38:00:00:80"]];
+let k=0,rows=[];
+function draw(){let s="";for(let i=0;i<4;i++)s+=`<line x1="${ND[i][3]}" y1="70" x2="${ND[i+1][3]}" y2="70" stroke="${i<k?"#6b4fbb":"#cfc6ea"}" stroke-width="5"/><text x="${(ND[i][3]+ND[i+1][3])/2}" y="58" text-anchor="middle" font-size="12" fill="#6b4fbb">구간 ${i+1}</text>`;
+ND.forEach(([n,ip,m,x],i)=>{s+=`<rect x="${x-52}" y="80" width="104" height="38" rx="8" fill="${i==k?"#efe9ff":"#fff"}" stroke="#9b86d9" stroke-width="2"/><text x="${x}" y="104" text-anchor="middle" font-size="13" font-weight="700">${n}</text><text x="${x}" y="136" text-anchor="middle" font-size="10" fill="#666">${ip.split(" | ").join(" / ")}</text>`});
+s+=`<circle cx="${k<4?(ND[k][3]+ND[k+1][3])/2:ND[4][3]}" cy="70" r="10" fill="#e6457a"/>`;sv.innerHTML=s}
+function table(){let h="<tr><th>구간</th><th>목적지 MAC</th><th>출발지 MAC</th><th>출발지 IP</th><th>목적지 IP</th><th>출발지 포트</th><th>목적지 포트</th><th>이름</th></tr>";
+rows.forEach((r,i)=>{h+="<tr><td>"+(i+1)+"</td>"+r.map((v,j)=>`<td class="mono${i&&rows[i-1][j]!=v?" hl":""}">${v}</td>`).join("")+"<td>www.school.ac.kr</td></tr>"});tb.innerHTML=h}
+function row(i){const n=nat.checked&&i>0;return [SEG[i][1],SEG[i][0],n?"211.36.5.7":"192.168.0.23","203.237.1.80",n?"40001":"51544","443"]}
+const MSG=["내 PC: 목적지 203.237.1.80은 우리 네트워크가 아니므로 기본 게이트웨이(공유기)의 MAC으로 프레임을 씁니다.","공유기: 프레임을 벗기고 IP를 확인한 뒤, 다음 구간용으로 MAC을 새로 씁니다."," ISP 라우터: 라우팅 표에서 다음 홉(학교 라우터)을 고르고, 또 MAC을 새로 씁니다.","학교 라우터: 목적지가 바로 옆 네트워크이므로 ARP로 웹 서버 MAC을 알아내 마지막 구간을 씁니다."];
+st.onclick=()=>{if(k>=4)return;rows.push(row(k));let m=MSG[k];if(k==1&&nat.checked)m+=" NAT가 켜져 있으므로 출발지 IP 192.168.0.23 → 211.36.5.7, 포트 51544 → 40001로 바꿉니다.";log.textContent+=m+"\n";k++;if(k==4)log.textContent+="웹 서버: 목적지 포트 443을 보고 웹 서버 프로그램(HTTPS)에게 데이터를 넘깁니다. 도착!";draw();table();log.scrollTop=1e9};
+rs.onclick=()=>{k=0;rows=[];log.textContent="";draw();table()};nat.onchange=rs.onclick;rs.onclick();
+</script></body></html>

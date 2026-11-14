@@ -1,0 +1,29 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>헤더 오버헤드와 RoCEv2 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">2장 시뮬레이터</div><h1>헤더 오버헤드와 RoCEv2</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>보낼 데이터 종류(웹 페이지, 메신저 한 줄, 영상 통화, GPU 통신 RoCEv2)를 고릅니다.</li><li>막대에서 계층마다 붙은 헤더가 프레임 하나에서 얼마나 차지하는지 봅니다.</li><li>데이터 크기 슬라이더를 아주 작게(예: 20바이트) 해 보세요. 배보다 배꼽(헤더)이 커집니다.</li><li>MTU를 1500에서 9000(점보 프레임)으로 바꾸면 같은 1 MB를 보낼 때 프레임 수와 헤더 총량이 얼마나 줄어드는지 비교합니다.</li></ol></div>
+<div class="card"><div class="row"><label>데이터 종류 <select id="ty"><option value="0">웹 페이지 (HTTP/TCP/IP)</option><option value="1">메신저 한 줄 (HTTPS)</option><option value="2">영상 통화 (RTP/UDP/IP)</option><option value="3">GPU 통신 (RoCEv2)</option></select></label></div>
+<div class="row"><label>프레임 하나의 데이터 <input type="range" id="pl" min="1" max="8900" value="1400"> <b id="plv"></b> 바이트</label></div>
+<svg class="stage" id="sv" viewBox="0 0 800 150"></svg>
+<div class="row"><span class="pill">프레임 크기</span><b id="fs"></b>&nbsp;<span class="pill">데이터 비율(효율)</span><span class="big" id="ef"></span></div>
+<h2 style="font-size:15px;color:var(--p);margin:14px 0 4px">1 MB를 보낸다면?</h2>
+<div class="row"><label>MTU <select id="mtu"><option>1500</option><option>4096</option><option>9000</option></select></label></div>
+<div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 캡슐화는 공짜가 아닙니다. 계층마다 헤더가 붙어 실제 데이터가 차지하는 비율(효율)이 줄어듭니다.<br>• 작은 데이터를 자주 보내면 효율이 크게 떨어지고, 큰 프레임(점보 프레임)은 헤더 비율과 처리할 프레임 수를 함께 줄입니다.<br>• RoCEv2는 GPU 데이터를 이더넷·IP·UDP(4791번)·BTH 헤더로 포장합니다. 이 장의 캡슐화 지식만으로 최신 AI 네트워크를 읽을 수 있습니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const ST=[[["이더넷",14,"#e6457a"],["IP",20,"#3a86ff"],["TCP(옵션 포함)",32,"#2e8b57"],["데이터",0,"#9b86d9"],["FCS",4,"#e6457a"]],
+[["이더넷",14,"#e6457a"],["IP",20,"#3a86ff"],["TCP",20,"#2e8b57"],["TLS",29,"#00a3a3"],["데이터",0,"#9b86d9"],["FCS",4,"#e6457a"]],
+[["이더넷",14,"#e6457a"],["IP",20,"#3a86ff"],["UDP",8,"#2e8b57"],["RTP",12,"#e69500"],["데이터",0,"#9b86d9"],["FCS",4,"#e6457a"]],
+[["이더넷",14,"#e6457a"],["IP",20,"#3a86ff"],["UDP 4791",8,"#2e8b57"],["BTH",12,"#e69500"],["데이터",0,"#9b86d9"],["ICRC",4,"#00a3a3"],["FCS",4,"#e6457a"]]];
+const PRE=[1400,40,160,4000];
+function run(){const s=ST[+ty.value].map(x=>x.slice()),P=+pl.value;plv.textContent=P;s.find(x=>x[0]=="데이터")[1]=P;
+const tot=s.reduce((a,x)=>a+x[1],0),hd=tot-P;let x=10,sv_="";const W=780;
+s.forEach(([n,b,c])=>{const w=Math.max(b/tot*W,3);sv_+=`<rect x="${x}" y="30" width="${w}" height="50" fill="${c}" stroke="#fff"/>`;if(w>40)sv_+=`<text x="${x+w/2}" y="52" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">${n}</text><text x="${x+w/2}" y="70" text-anchor="middle" fill="#fff" font-size="11">${b}B</text>`;x+=w});
+let lx=10;s.forEach(([n,b,c])=>{sv_+=`<rect x="${lx}" y="100" width="12" height="12" fill="${c}"/><text x="${lx+16}" y="111" font-size="12">${n} ${b}B</text>`;lx+=110});
+sv_+=`<text x="10" y="20" font-size="12" fill="#666">← 앞(먼저 전송)          프레임 하나 = ${tot} 바이트          뒤 →</text>`;sv.innerHTML=sv_;
+fs.textContent=tot+" 바이트 (헤더 "+hd+")";ef.textContent=(P/tot*100).toFixed(1)+"%";
+const M=+mtu.value,ipHd=s.slice(1).filter(x=>!["데이터","FCS","ICRC"].includes(x[0])).reduce((a,x)=>a+x[1],0)+(s.find(x=>x[0]=="ICRC")?4:0);const per=M-ipHd,N=Math.ceil(1048576/per),all=N*(hd)+1048576;
+log.textContent=`MTU ${M}: 프레임 하나에 데이터 ${per}바이트까지 (MTU ${M} − IP 이상의 헤더 ${ipHd})\n프레임 수 = 1,048,576 ÷ ${per} = ${N.toLocaleString()}개\n헤더 총량 = ${N.toLocaleString()} × ${hd} = ${(N*hd).toLocaleString()} 바이트 (전체의 ${(N*hd/all*100).toFixed(2)}%)\n→ 장비가 처리해야 할 프레임 수도 ${N.toLocaleString()}개입니다. MTU를 키우면 이 수가 줄어듭니다.`}
+ty.onchange=()=>{pl.value=PRE[+ty.value];run()};pl.oninput=run;mtu.onchange=run;run();
+</script></body></html>

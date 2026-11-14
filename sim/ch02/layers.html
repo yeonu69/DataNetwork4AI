@@ -1,0 +1,25 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>계층 맞히기 퀴즈 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css">
+<style>.lay{display:grid;grid-template-columns:150px 110px 1fr;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.lay>div{padding:6px 8px;border-bottom:1px solid var(--line);min-height:40px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.lay .o{background:#f6f3fd;font-weight:700;cursor:pointer}.lay .o:hover{background:#e6ddff}.lay .t{background:#ece6fb;color:var(--p);font-weight:700;justify-content:center;text-align:center}
+.chip{background:#fff;border:1px solid var(--p2);border-radius:99px;padding:1px 9px;font-size:13px}
+#q{font-size:24px;font-weight:800;color:var(--p)}</style></head><body>
+<header><div class="ch">2장 시뮬레이터</div><h1>계층 맞히기 퀴즈</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>위에 나온 낱말(프로토콜, 장비, 주소, PDU 이름)이 OSI 7계층 중 어디에 속하는지 왼쪽 계층 이름을 눌러 답합니다.</li><li>맞히면 그 계층 칸에 낱말이 쌓이고, 틀리면 정답과 이유가 기록 창에 나옵니다.</li><li>가운데 열은 같은 계층이 TCP/IP 4계층 모델에서 무엇으로 불리는지 보여 줍니다.</li><li>다 풀고 나면 쌓인 표를 보며 "계층마다 주소, 장비, PDU가 하나씩 짝지어진다"는 것을 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><span class="mut">이 낱말은 몇 계층일까요?</span> <span id="q"></span> <span class="pill" id="sc"></span><button class="sec" id="sk">건너뛰기</button><button class="sec" id="rs">처음부터</button></div>
+<div class="lay" id="lay"></div><div class="log" id="log" style="margin-top:10px">왼쪽 계층 이름을 눌러 답하세요.</div></div>
+<div class="key"><b>핵심 3줄</b><br>• 응용(7)·전송(4)·네트워크(3)·데이터 링크(2)·물리(1) 계층이 실제 인터넷에서 가장 자주 만나는 다섯 층입니다.<br>• 계층마다 짝이 있습니다. 전송-포트-세그먼트, 네트워크-IP-패킷-라우터, 데이터 링크-MAC-프레임-스위치.<br>• ARP처럼 두 계층 사이에 걸친 것도 있습니다. 모델은 이해를 돕는 지도일 뿐, 현실이 딱 맞아떨어지지는 않습니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const L=[[7,"응용"],[6,"표현"],[5,"세션"],[4,"전송"],[3,"네트워크"],[2,"데이터 링크"],[1,"물리"]];
+const TCPIP={7:"응용 계층",6:"",5:"",4:"전송 계층",3:"인터넷 계층",2:"네트워크 접근 계층",1:""};
+const Q=[["HTTP",[7],"웹 브라우저와 서버가 주고받는 규칙이라 응용 계층입니다."],["DNS",[7],"이름을 IP로 바꿔 주는 응용 서비스입니다(UDP 53번 위에서 동작)."],["TCP",[4],"순서와 재전송을 책임지는 전송 계층 프로토콜입니다."],["UDP",[4],"포트 번호만 붙이고 바로 보내는 가벼운 전송 계층 프로토콜입니다."],["IP",[3],"다른 네트워크로 길을 찾아가는 네트워크 계층의 주인공입니다."],["ICMP",[3],"IP와 함께 다니며 오류와 상태(ping)를 알리는 네트워크 계층 프로토콜입니다."],["ARP",[2,3],"IP 주소(3계층)로 MAC 주소(2계층)를 찾으므로 둘 사이에 걸쳐 있습니다. 둘 다 정답!"],["이더넷",[2,1],"프레임 형식(2계층)과 케이블 신호 규격(1계층)을 함께 정합니다."],["Wi-Fi (802.11)",[2,1],"무선 프레임(2계층)과 전파 규격(1계층)을 함께 정합니다."],["TLS",[6,7],"암호화는 OSI로는 표현 계층에 가깝지만, TCP/IP에서는 응용 계층으로 봅니다."],["스위치",[2],"MAC 주소를 보고 프레임을 해당 포트로 보내는 2계층 장비입니다."],["라우터",[3],"IP 주소를 보고 다른 네트워크로 패킷을 넘기는 3계층 장비입니다."],["허브",[1],"신호를 모든 포트로 그대로 복사하는 1계층 장비입니다."],["리피터",[1],"약해진 신호를 다시 키우기만 하는 1계층 장비입니다."],["랜 케이블(UTP)",[1],"0과 1을 전기 신호로 나르는 길, 물리 계층입니다."],["포트 번호",[4],"어느 프로그램에게 줄지 가리키는 전송 계층 주소입니다."],["IP 주소",[3],"네트워크 계층 주소입니다."],["MAC 주소",[2],"랜카드에 새겨진 데이터 링크 계층 주소입니다."],["세그먼트",[4],"전송 계층 PDU입니다(UDP는 데이터그램)."],["패킷",[3],"네트워크 계층 PDU입니다."],["프레임",[2],"데이터 링크 계층 PDU입니다."],["비트",[1],"물리 계층에서 다루는 단위입니다."],["세션 유지(로그인 상태)",[5],"대화의 시작과 끝을 관리하는 것이 세션 계층의 일입니다. 실제로는 응용 프로그램이 맡습니다."],["JPEG·UTF-8 인코딩",[6],"데이터의 표현 형식을 정하는 표현 계층의 일입니다."]];
+let order,i,score,tried,box;
+function init(){order=Q.map((_,k)=>k).sort(()=>Math.random()-.5);i=0;score=0;tried=0;box={};L.forEach(([n])=>box[n]=[]);draw();next();log.textContent="왼쪽 계층 이름을 눌러 답하세요."}
+function draw(){let h="";L.forEach(([n,nm])=>{const t=TCPIP[n];h+=`<div class="o" data-n="${n}">${n}. ${nm} 계층</div><div class="t">${t}</div><div>${box[n].map(x=>`<span class="chip">${x}</span>`).join("")}</div>`});lay.innerHTML=h;
+lay.querySelectorAll(".o").forEach(d=>d.onclick=()=>ans(+d.dataset.n))}
+function next(){if(i>=order.length){q.textContent="끝!";sc.textContent=`${score} / ${tried}`;log.textContent+=`\n\n모두 풀었습니다. 점수 ${score}/${tried}. [처음부터]로 다시 해 보세요.`;return}q.textContent=Q[order[i]][0];sc.textContent=`${score} / ${tried}`}
+function ans(n){if(i>=order.length)return;const [w,a,why]=Q[order[i]];tried++;if(a.includes(n)){score++;a.forEach(k=>box[k].push(w));log.textContent=`⭕ ${w} → ${n}계층. ${why}`}else{a.forEach(k=>box[k].push(w));log.textContent=`❌ ${w}는 ${n}계층이 아니라 ${a.join("·")}계층입니다. ${why}`}i++;draw();next()}
+sk.onclick=()=>{if(i<order.length){const [w,a,why]=Q[order[i]];a.forEach(k=>box[k].push(w));log.textContent=`건너뜀: ${w} → ${a.join("·")}계층. ${why}`;i++;draw();next()}};rs.onclick=init;init();
+</script></body></html>
