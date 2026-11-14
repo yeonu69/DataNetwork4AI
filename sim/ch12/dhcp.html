@@ -1,0 +1,29 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DHCP DORA와 임대 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">12장 시뮬레이터</div><h1>DHCP: DORA와 임대</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>노트북을 하나씩 켭니다([노트북 켜기]). 주소가 없는 노트북이 Discover → Offer → Request → Ack 네 번의 대화로 주소를 빌립니다.</li><li>오른쪽 주소 풀(.100~.105, 6개)에서 빌려준 주소와 남은 임대 시간이 표시됩니다.</li><li>[시간 +30분]을 눌러 시간을 흘려 보세요. 임대 시간의 50%(T1)가 되면 노트북이 스스로 갱신하고, 꺼진 노트북의 주소는 만료되어 풀로 돌아갑니다.</li><li>노트북을 7대 켜서 풀이 바닥나면 어떻게 되는지(169.254.x.x 자동 주소) 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><button id="on">노트북 켜기</button><button class="sec" id="off">마지막 노트북 끄기</button><button class="sec" id="tm">시간 +30분</button><button class="sec" id="rs">처음으로</button><span class="mut">임대 시간 2시간</span></div>
+<div class="grid2"><svg class="stage" id="sv" viewBox="0 0 400 330"></svg><div><b>DHCP 서버(공유기)의 주소 풀</b> <span class="mut" id="clk"></span><table id="tb"></table></div></div><div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• DHCP는 주소가 없는 단말이 브로드캐스트로 "주소 주세요"(Discover)를 외치면, 서버가 제안(Offer)하고, 단말이 요청(Request), 서버가 확정(Ack)하는 4단계입니다.<br>• 주소는 '임대'입니다. 임대 시간의 절반(T1)에 갱신을 시도하고, 갱신하지 않은 주소는 만료되어 다른 단말에게 다시 빌려줍니다.<br>• Ack에는 IP뿐 아니라 마스크, 게이트웨이, DNS 서버까지 들어 있어 사용자는 아무것도 설정하지 않아도 됩니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const LEASE=120;let pool,dev,now,busy=false;const SRV=[320,165];
+function reset(){pool={};for(let i=100;i<=105;i++)pool[i]=null;dev=[];now=0;log.textContent="";draw()}
+function pos(i){return[60,30+i*42]}
+function draw(){let s=`<rect x="${SRV[0]-60}" y="${SRV[1]-30}" width="120" height="60" rx="10" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="${SRV[0]}" y="${SRV[1]-5}" text-anchor="middle" font-weight="700" font-size="13">DHCP 서버</text><text x="${SRV[0]}" y="${SRV[1]+13}" text-anchor="middle" font-size="11" fill="#666">192.168.0.1</text>`;
+dev.forEach((d,i)=>{const[x,y]=pos(i);s+=`<line x1="${x+50}" y1="${y}" x2="${SRV[0]-60}" y2="${SRV[1]}" stroke="#eee" stroke-width="2"/><rect x="${x-50}" y="${y-16}" width="100" height="32" rx="6" fill="${!d.on?"#eee":d.ip&&d.ip.startsWith("169")?"#ffd9d9":d.ip?"#d6f5e3":"#fff"}" stroke="#9b86d9" stroke-width="2"/><text x="${x}" y="${y-2}" text-anchor="middle" font-size="12" font-weight="700">노트북 ${d.n}${d.on?"":" (꺼짐)"}</text><text x="${x}" y="${y+11}" text-anchor="middle" font-size="10">${d.ip||"주소 없음"}</text>`});
+sv.innerHTML=s+'<g id="fx"></g>';clk.textContent=`(지금 ${Math.floor(now/60)}시간 ${now%60}분)`;
+tb.innerHTML="<tr><th>주소</th><th>빌린 단말</th><th>남은 임대</th></tr>"+Object.entries(pool).map(([k,v])=>`<tr${v?"":' style="color:#999"'}><td class="mono">192.168.0.${k}</td><td>${v?"노트북 "+v.n:"(비어 있음)"}</td><td>${v?Math.max(0,v.exp-now)+"분":"-"}</td></tr>`).join("")}
+const wait=t=>new Promise(r=>setTimeout(r,t));
+function pkt(a,b,c,t){const fx=document.getElementById("fx");const e=document.createElementNS("http://www.w3.org/2000/svg","g");e.innerHTML=`<circle r="8" fill="${c}"/><text y="-11" text-anchor="middle" font-size="10" font-weight="700" fill="${c}">${t}</text>`;fx.appendChild(e);
+return new Promise(r=>{const t0=performance.now();function f(tt){const u=Math.min(1,(tt-t0)/500);e.setAttribute("transform",`translate(${a[0]+(b[0]-a[0])*u},${a[1]+(b[1]-a[1])*u})`);u<1?requestAnimationFrame(f):(e.remove(),r())}requestAnimationFrame(f)})}
+const say=m=>{log.textContent+=m+"\n";log.scrollTop=1e9};
+on.onclick=async()=>{if(busy||dev.length>=7)return;busy=true;const d={n:dev.length+1,on:true,ip:null};dev.push(d);draw();const p=pos(dev.length-1),P=[p[0]+50,p[1]],S=[SRV[0]-60,SRV[1]];
+say(`노트북 ${d.n}: Discover (출발 0.0.0.0 → 목적지 255.255.255.255 브로드캐스트) "DHCP 서버 있나요?"`);await pkt(P,S,"#3a86ff","Discover");
+const free=Object.keys(pool).find(k=>!pool[k]);if(!free){say(`서버: 빌려줄 주소가 없습니다! 응답 없음…\n노트북 ${d.n}: 여러 번 다시 외치다 포기하고 169.254.x.x 자동 주소(APIPA)를 스스로 붙임 → 인터넷 안 됨`);d.ip="169.254.37.12";draw();busy=false;return}
+say(`서버: Offer "192.168.0.${free} 어때요? (임대 2시간)"`);await pkt(S,P,"#e69500","Offer");say(`노트북 ${d.n}: Request "192.168.0.${free} 쓸게요" (브로드캐스트: 다른 서버들에게도 알림)`);await pkt(P,S,"#6b4fbb","Request");
+pool[free]={n:d.n,exp:now+LEASE};d.ip="192.168.0."+free;say(`서버: Ack "확정! 마스크 255.255.255.0, 게이트웨이 192.168.0.1, DNS 168.126.63.1"`);await pkt(S,P,"#2e8b57","Ack");draw();busy=false};
+off.onclick=()=>{const d=[...dev].reverse().find(x=>x.on);if(!d)return;d.on=false;say(`노트북 ${d.n} 꺼짐 (주소를 반납하지 않고 그냥 꺼짐 → 임대가 끝날 때까지 서버는 모름)`);draw()};
+tm.onclick=()=>{now+=30;for(const k in pool){const v=pool[k];if(!v)continue;const d=dev.find(x=>x.n==v.n);if(d&&d.on&&!d.ip.startsWith("169")&&v.exp-now<=LEASE/2){v.exp=now+LEASE;say(`[${now}분] 노트북 ${d.n}: 임대 절반(T1) 지남 → 서버에게 직접 Request로 갱신 → Ack, 다시 2시간`)}else if(v.exp<=now){pool[k]=null;say(`[${now}분] 192.168.0.${k} 임대 만료 → 풀로 돌아감 (노트북 ${v.n}이 꺼져 있었음)`);if(d)d.ip=null}}draw()};
+rs.onclick=reset;reset();
+</script></body></html>

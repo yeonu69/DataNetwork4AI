@@ -1,0 +1,25 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>포트 포워딩 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">12장 시뮬레이터</div><h1>포트 포워딩: 밖에서 안으로</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>집 밖의 친구가 우리 집 공인 IP 211.36.5.7로 접속하려 합니다. 아래 버튼에서 접속할 포트를 골라 [접속 시도]를 누릅니다.</li><li>NAT 공유기는 안에서 먼저 시작한 연결이 아니면 들어온 패킷을 누구에게 줄지 몰라 버립니다.</li><li>포트 포워딩 규칙을 추가해 "8080번으로 오면 192.168.0.20의 80번으로"처럼 길을 열어 줍니다. 다시 접속해 성공하는지 봅니다.</li><li>[해커의 포트 스캔]을 눌러 열린 포트가 어떻게 드러나는지, 왜 꼭 필요한 포트만 열어야 하는지 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>외부 접속 포트 <select id="ep"><option>8080</option><option>5000</option><option>27015</option><option>22</option><option>3389</option></select></label><button id="go">접속 시도</button><button class="sec" id="sc" style="border-color:#d9534f;color:#d9534f">해커의 포트 스캔</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 280"></svg>
+<b>포트 포워딩 규칙</b><table id="tb"></table>
+<div class="row"><label>외부 포트 <input type="number" id="re" value="8080" style="width:80px"></label><label>→ 내부 <select id="ri"><option value="192.168.0.10">NAS 192.168.0.10</option><option value="192.168.0.20" selected>CCTV 192.168.0.20</option><option value="192.168.0.30">게임 PC 192.168.0.30</option></select></label><label>포트 <input type="number" id="rp" value="80" style="width:80px"></label><button class="sec" id="ad">규칙 추가</button></div><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• NAT 뒤의 기기는 사설 주소라서 밖에서 먼저 찾아올 수 없습니다. 공유기는 변환 표에 없는 '들어오는' 패킷을 버립니다.<br>• 포트 포워딩은 "공인 IP의 이 포트로 오면 안쪽 이 기기의 이 포트로"라는 고정 규칙을 공유기에 적어, 밖에서 안으로 길을 여는 것입니다.<br>• 연 포트는 전 세계 누구나 두드릴 수 있습니다. 꼭 필요한 것만 열고, 관리용 포트(22, 3389)는 열지 않거나 VPN 뒤에 둡니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+let R=[];const DV={"192.168.0.10":["NAS",[5000]],"192.168.0.20":["CCTV",[80]],"192.168.0.30":["게임 PC",[27015]]};
+function draw(hl,ok,ip){let s=`<rect x="20" y="100" width="130" height="56" rx="10" fill="#fff" stroke="#e69500" stroke-width="2"/><text x="85" y="124" text-anchor="middle" font-weight="700">밖의 친구</text><text x="85" y="142" text-anchor="middle" font-size="11">121.130.4.9</text>
+<rect x="300" y="90" width="150" height="76" rx="10" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="375" y="116" text-anchor="middle" font-weight="700">공유기(NAT)</text><text x="375" y="134" text-anchor="middle" font-size="11">밖: 211.36.5.7</text><text x="375" y="150" text-anchor="middle" font-size="11">안: 192.168.0.1</text>
+<line x1="150" y1="128" x2="300" y2="128" stroke="${hl?ok?"#2e8b57":"#d9534f":"#cfc6ea"}" stroke-width="5"/><text x="225" y="118" text-anchor="middle" font-size="12">${hl?"→ 211.36.5.7:"+hl:""}</text>`;
+Object.entries(DV).forEach(([k,[n,p]],i)=>{const y=40+i*90,h=ok&&ip==k;s+=`<line x1="450" y1="128" x2="600" y2="${y+20}" stroke="${h?"#2e8b57":"#cfc6ea"}" stroke-width="${h?5:3}"/><rect x="600" y="${y}" width="170" height="44" rx="8" fill="${h?"#d6f5e3":"#fff"}" stroke="#9b86d9" stroke-width="2"/><text x="685" y="${y+19}" text-anchor="middle" font-weight="700" font-size="13">${n}</text><text x="685" y="${y+35}" text-anchor="middle" font-size="11">${k} (서비스 ${p}번)</text>`});
+if(hl&&!ok)s+=`<text x="375" y="200" text-anchor="middle" font-size="28" fill="#d9534f">✕</text><text x="375" y="225" text-anchor="middle" font-size="12" fill="#d9534f">규칙 없음 → 버림</text>`;sv.innerHTML=s}
+function tbl(){tb.innerHTML="<tr><th>외부 포트</th><th>내부 주소:포트</th><th>기기</th><th></th></tr>"+(R.length?R.map((r,i)=>`<tr><td>${r[0]}</td><td class="mono">${r[1]}:${r[2]}</td><td>${DV[r[1]][0]}</td><td><button class="sec" data-d="${i}">삭제</button></td></tr>`).join(""):'<tr><td colspan="4" class="mut">규칙 없음 (모든 들어오는 연결 차단)</td></tr>');tb.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{R.splice(+b.dataset.d,1);tbl()})}
+function tryP(p){const r=R.find(x=>x[0]==p);if(!r)return[false,`211.36.5.7:${p} 도착 → 변환 표에도, 포워딩 규칙에도 없음 → 공유기가 조용히 버림 (친구: "연결 시간 초과")`];
+const svc=DV[r[1]][1].includes(r[2]);return[svc,`211.36.5.7:${p} 도착 → 규칙 발견! 목적지를 ${r[1]}:${r[2]}로 바꿔 ${DV[r[1]][0]}에게 전달`+(svc?` → 서비스 응답 ✅ (돌아갈 때는 출발지를 다시 211.36.5.7:${p}로 바꿈)`:` → 하지만 ${DV[r[1]][0]}의 ${r[2]}번에는 서비스가 없음 (규칙의 내부 포트 확인!)`),r[1]]}
+go.onclick=()=>{const p=+ep.value,[ok,m,ip]=tryP(p);draw(p,ok,ip);log.textContent=m};
+sc.onclick=()=>{draw();const L=[];[21,22,80,443,3389,5000,8080,27015].forEach(p=>{const[ok]=tryP(p);L.push(`  ${p}번: ${ok?"열림 ⚠️":"닫힘/응답 없음"}`)});log.textContent="해커가 211.36.5.7의 포트를 하나씩 두드려 봅니다(포트 스캔).\n"+L.join("\n")+"\n→ 열린 포트는 전부 노출됩니다. 그 뒤의 기기가 약한 비밀번호나 오래된 펌웨어라면 바로 공격 대상입니다."};
+ad.onclick=()=>{const e=+re.value,p=+rp.value;if(!e||!p)return;R=R.filter(r=>r[0]!=e);R.push([e,ri.value,p]);tbl();log.textContent=`규칙 추가: 외부 ${e} → ${ri.value}:${p}`};
+tbl();draw();
+</script></body></html>
