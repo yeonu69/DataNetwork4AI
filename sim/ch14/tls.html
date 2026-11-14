@@ -1,0 +1,43 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HTTPS가 숨기는 것 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css">
+<style>td.v{font-family:"DejaVu Sans Mono",Consolas,monospace;font-size:12px;word-break:break-all}td.see{background:#ffe9e9}td.hide{background:#e9f7ef;color:#2e6b4a}
+.warn{border:2px solid #d9534f;background:#fff5f5;border-radius:10px;padding:12px;margin-top:8px}</style></head><body>
+<header><div class="ch">14장 시뮬레이터</div><h1>HTTPS가 숨기는 것과 숨기지 못하는 것</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>카페 와이파이에서 쇼핑몰에 로그인합니다. 같은 와이파이의 도청자(눈 모양)가 모든 패킷을 엿보고 있습니다.</li><li>[HTTP로 로그인]과 [HTTPS로 로그인]을 각각 눌러, 아래 표의 '도청자에게 보이는 것' 열을 비교합니다. 빨간 칸이 새어 나간 정보입니다.</li><li>HTTPS에서도 보이는 것(IP 주소, 사이트 이름, 데이터 크기와 시각)을 찾고, [DNS 암호화(DoH)]와 [ECH]를 켜면 무엇이 더 숨겨지는지 봅니다.</li><li>[가짜 와이파이(중간자)]를 눌러, 공격자가 중간에서 가짜 인증서를 내밀 때 브라우저가 어떻게 막는지 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><button class="sec" id="b1">HTTP로 로그인</button><button id="b2">HTTPS로 로그인</button><button class="sec" id="b3" style="border-color:#d9534f;color:#d9534f">가짜 와이파이(중간자)</button><label><input type="checkbox" id="doh"> DNS 암호화(DoH)</label><label><input type="checkbox" id="ech"> ECH(이름까지 암호화)</label></div>
+<svg class="stage" id="sv" viewBox="0 0 800 200"></svg>
+<div id="wn"></div>
+<table id="tb" style="margin-top:8px"></table><div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• HTTPS = HTTP + TLS. 처음에 인증서로 "진짜 그 사이트인지" 확인하고, 함께 정한 비밀 키로 이후 내용을 모두 암호화합니다.<br>• 숨겨지는 것: 주소의 경로, 쿠키, 아이디·비밀번호, 주고받는 내용. 숨겨지지 않는 것: 상대 IP 주소와 포트, 접속한 사이트 이름(SNI·DNS), 데이터의 크기와 시각.<br>• 중간자가 가짜 인증서를 내밀면 믿을 만한 기관의 서명이 없어 브라우저가 경고합니다. 그 경고를 무시하고 들어가면 HTTPS도 소용없습니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+function gib(n){let s="";const h="0123456789abcdef";for(let i=0;i<n;i++)s+=h[Math.floor(Math.random()*16)];return s}
+const SITE="shop.example.com",IP="93.184.215.14";
+function rows(mode){const tls=mode!="http",d=doh.checked,e=ech.checked&&tls;
+return[["DNS 질의",`${SITE}의 주소는?`,d?["hide",`(HTTPS 안에 숨은 DNS) ${gib(24)}…`]:["see",`DNS 질의: ${SITE} → ${IP}`],d?"DoH: DNS 질문도 HTTPS로 감싸서 보냄":"보통 DNS는 암호화되지 않아 어떤 사이트에 가는지 드러납니다"],
+["연결 대상",`${IP}:${tls?443:80}`,["see",`${IP}:${tls?443:80}`],"IP와 포트는 길 찾기에 필요해서 암호화할 수 없습니다"],
+...(tls?[["TLS 시작(ClientHello)",`서버 이름 = ${SITE}`,e?["hide",`SNI: cloudflare-ech.com (진짜 이름은 암호화 ${gib(10)}…)`]:["see",`SNI: ${SITE}`],e?"ECH: 진짜 이름은 암호화하고 겉에는 공용 이름만":"서버가 어떤 인증서를 줄지 알도록 이름을 평문으로 보냄"],
+["인증서",`${SITE} 인증서 (발급: 신뢰 기관)`,["see",`인증서: CN=${SITE}`],"TLS 1.3에서는 인증서도 암호화되지만, 이름은 SNI로 이미 드러납니다"]]:[]),
+["요청 첫 줄","POST /login HTTP/1.1",tls?["hide",gib(28)]:["see","POST /login HTTP/1.1"],"어느 페이지(경로)에 가는지"],
+["쿠키","Cookie: session=7f3a9c21",tls?["hide",gib(28)]:["see","Cookie: session=7f3a9c21"],"쿠키를 훔치면 로그인 없이 그 사람 행세를 할 수 있습니다(세션 하이재킹)"],
+["로그인 정보","id=hong&pw=Cafe!2024",tls?["hide",gib(28)]:["see","id=hong&pw=Cafe!2024"],"비밀번호"],
+["응답 내용","주문 내역: 노트북 1대, 주소 서울시…",tls?["hide",gib(28)]:["see","주문 내역: 노트북 1대, 주소 서울시…"],"화면에 보이는 모든 것"],
+["크기·시각","요청 612바이트, 응답 48KB, 14:02:07",["see","요청 612B, 응답 48KB, 14:02:07"],"암호화해도 크기와 시각은 남아, 대략 무엇을 했는지 추측할 수 있습니다"]]}
+function stage(mode,k,total){const c={http:"#d9534f",tls:"#2e8b57",mitm:"#e69500"}[mode];let s=`<rect x="20" y="60" width="140" height="70" rx="10" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="90" y="90" text-anchor="middle" font-weight="700">내 노트북</text><text x="90" y="110" text-anchor="middle" font-size="11">카페 와이파이</text>
+<rect x="640" y="60" width="140" height="70" rx="10" fill="#fff" stroke="#6b4fbb" stroke-width="2"/><text x="710" y="90" text-anchor="middle" font-weight="700">${SITE}</text><text x="710" y="110" text-anchor="middle" font-size="11">${IP}</text>
+<line x1="160" y1="95" x2="640" y2="95" stroke="${c}" stroke-width="${mode=="http"?3:7}" ${mode=="http"?"":`stroke-opacity=".35"`}/>`+(mode!="http"&&mode!="mitm"?`<text x="400" y="86" text-anchor="middle" font-size="12" fill="#2e8b57" font-weight="700">🔒 TLS 암호화 터널</text>`:"");
+if(mode=="mitm")s+=`<rect x="340" y="62" width="120" height="66" rx="10" fill="#fff5f5" stroke="#d9534f" stroke-width="2"/><text x="400" y="88" text-anchor="middle" font-weight="700" fill="#d9534f">가짜 공유기</text><text x="400" y="106" text-anchor="middle" font-size="11" fill="#d9534f">가짜 인증서 제시</text>`;
+else s+=`<g transform="translate(400,160)"><ellipse rx="26" ry="14" fill="#fff" stroke="#333" stroke-width="2"/><circle r="7" fill="#333"/></g><text x="440" y="165" font-size="12">도청자 (같은 와이파이)</text><line x1="400" y1="146" x2="400" y2="100" stroke="#333" stroke-dasharray="3 3"/>`;
+const u=total?k/total:0;if(k>0&&k<=total)s+=`<circle cx="${170+460*u}" cy="95" r="9" fill="${c}"/>`;sv.innerHTML=s}
+let anim=null;
+function run(mode){clearInterval(anim);wn.innerHTML="";const R=rows(mode);stage(mode,0,R.length);tb.innerHTML="";log.textContent="";let k=0;
+if(mode=="mitm"){stage("mitm",0,1);log.textContent="공격자가 '무료 카페 와이파이'라는 가짜 공유기를 띄웠습니다. 내 노트북은 shop.example.com에 접속하려 하지만, 중간의 가짜 공유기가 대신 응답하며 직접 만든 인증서를 내밉니다.";
+setTimeout(()=>{wn.innerHTML=`<div class="warn"><b style="color:#d9534f;font-size:17px">⚠️ 연결이 비공개로 설정되어 있지 않습니다</b><p>공격자가 ${SITE}에서 정보(예: 비밀번호, 메시지, 신용카드)를 도용하려고 할 수 있습니다.<br><span class="mono">NET::ERR_CERT_AUTHORITY_INVALID</span></p><button class="sec" id="back">안전한 곳으로 돌아가기 (권장)</button> <button class="sec" id="ign" style="border-color:#d9534f;color:#d9534f">고급 → 그래도 계속(안전하지 않음)</button></div>`;
+log.textContent+="\n\n브라우저가 인증서를 검사했습니다: 이 인증서는 내 컴퓨터가 믿는 인증 기관(CA)의 서명이 없습니다 → 경고 화면에서 멈춤.";
+back.onclick=()=>{wn.innerHTML='<p class="ok">잘했습니다. 아무 정보도 보내지 않았습니다. 인증서 경고는 HTTPS의 마지막 방어선입니다.</p>'};
+ign.onclick=()=>{wn.innerHTML='<p class="bad">경고를 무시하고 들어갔습니다. 이제 암호화 상대는 진짜 서버가 아니라 공격자입니다. 공격자가 내용을 다 풀어 보고 다시 암호화해 진짜 서버로 넘깁니다. 자물쇠는 있어도 비밀번호가 새어 나갔습니다.</p>';stage("mitm",1,1)}},900);return}
+anim=setInterval(()=>{k++;stage(mode,k,R.length);const shown=R.slice(0,k);
+tb.innerHTML="<tr><th>단계</th><th>실제 내용</th><th>도청자에게 보이는 것</th><th>설명</th></tr>"+shown.map(([a,b,[cl,v],w])=>`<tr><td>${a}</td><td class="v">${b}</td><td class="v ${cl}">${cl=="see"?"👁 ":"🔒 "}${v}</td><td class="mut">${w}</td></tr>`).join("");
+if(k>=R.length){clearInterval(anim);const leak=R.filter(r=>r[2][0]=="see").map(r=>r[0]);log.textContent=`${mode=="http"?"HTTP":"HTTPS"}: 도청자에게 보인 항목 ${leak.length}개 / ${R.length}개 → ${leak.join(", ")}`+(mode=="http"?"\n비밀번호와 쿠키까지 그대로 보였습니다. 요즘 브라우저가 HTTP 사이트에 '주의 요함'을 띄우는 이유입니다.":`\n내용은 모두 숨었지만 '${doh.checked&&ech.checked?"어느 IP와":"어느 사이트와"} 언제, 얼마나' 주고받았는지는 남습니다.`)}},450)}
+b1.onclick=()=>run("http");b2.onclick=()=>run("tls");b3.onclick=()=>run("mitm");doh.onchange=ech.onchange=()=>{};stage("tls",0,1);
+</script></body></html>

@@ -1,0 +1,44 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HTTP 요청과 응답 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css">
+<style>.raw{font-family:"DejaVu Sans Mono",Consolas,monospace;font-size:12.5px;background:#1f1b2e;color:#e8e3ff;border-radius:10px;padding:10px;white-space:pre-wrap;min-height:150px;margin:4px 0;word-break:break-all}.raw .h{color:#ffd54a}.raw .k{color:#9fd8ff}
+.code{display:inline-block;padding:3px 12px;border-radius:99px;color:#fff;font-weight:700}</style></head><body>
+<header><div class="ch">14장 시뮬레이터</div><h1>HTTP 요청과 응답: 메서드, 상태 코드, 캐시</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>메서드와 주소를 고르고 [요청 보내기]를 누르면, 브라우저가 실제로 보내는 요청 글자와 서버의 응답 글자가 그대로 나옵니다. HTTP는 사람이 읽을 수 있는 글자로 된 약속입니다.</li><li>/old-page(301 이사), /mypage(로그인 쿠키 유무), /admin(403), /nope(404), POST /api/chat(AI 응답)을 차례로 보내 상태 코드를 모아 보세요.</li><li>/logo.png를 두 번 보내 보세요. 두 번째는 브라우저 캐시에서 꺼내 요청 자체를 안 보냅니다. [시간 +30초]로 유효 기간을 넘기면 "바뀌었나요?"만 묻고 304를 받습니다.</li><li>[서버 과부하]를 켜면 무슨 코드가 오는지 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><select id="me"><option>GET</option><option>POST</option><option>HEAD</option></select><select id="pa"><option>/</option><option>/logo.png</option><option>/old-page</option><option>/mypage</option><option>/admin</option><option>/nope</option><option>/api/chat</option></select><button id="go">요청 보내기</button><button class="sec" id="tp">시간 +30초</button></div>
+<div class="row"><label><input type="checkbox" id="ck"> 로그인 쿠키 보내기</label><label><input type="checkbox" id="ch"> 서버에서 로고 그림 바뀜</label><label><input type="checkbox" id="ov"> 서버 과부하</label><span class="mut" id="clk"></span></div>
+<div class="grid2"><div><b>요청 (브라우저 → 서버)</b><div class="raw" id="rq"></div></div><div><b>응답 (서버 → 브라우저)</b> <span id="sc"></span><div class="raw" id="rp"></div></div></div>
+<div class="log" id="log" style="margin-top:8px"></div>
+<div class="grid2" style="margin-top:8px"><div><b>지금까지 받은 상태 코드</b><div id="got" class="row"></div></div><div><b>브라우저 캐시</b><table id="ca"></table></div></div></div>
+<div class="key"><b>핵심 3줄</b><br>• HTTP 요청은 '메서드 + 주소 + 헤더 + (본문)'입니다. GET은 가져오기, POST는 보내서 처리하기, HEAD는 헤더만 받기입니다.<br>• 응답의 첫 줄 상태 코드로 결과를 압니다. 2xx 성공, 3xx 다른 곳으로(이사·캐시 그대로), 4xx 요청한 쪽 잘못, 5xx 서버 쪽 문제입니다.<br>• Cache-Control과 ETag 덕분에 브라우저는 같은 파일을 다시 받지 않습니다. 기한이 지나면 "바뀌었나요?"만 묻고 304로 확인합니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+let now=0,cache=null,seen=new Set();const H="www.example.com";
+const COLS={2:"#2e8b57",3:"#3a86ff",4:"#e69500",5:"#d9534f"};
+const MSG={200:"OK",301:"Moved Permanently",304:"Not Modified",401:"Unauthorized",403:"Forbidden",404:"Not Found",405:"Method Not Allowed",503:"Service Unavailable"};
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")}
+function fmt(t){return esc(t).replace(/^(\S+ \S+ HTTP\/1\.1|HTTP\/1\.1 .*)$/m,'<span class="h">$1</span>').replace(/^([A-Za-z-]+):/gm,'<span class="k">$1</span>:')}
+function req(m,p,extra){let h=`${m} ${p} HTTP/1.1\nHost: ${H}\nUser-Agent: Mozilla/5.0 (Windows NT 10.0) Chrome/130\nAccept: ${p.endsWith(".png")?"image/*":p.startsWith("/api")?"application/json":"text/html"}\n`;if(ck.checked)h+="Cookie: session=7f3a9c21\n";if(extra)h+=extra;
+if(m=="POST"){const b=p=="/api/chat"?'{"prompt":"포트 번호가 뭐야?"}':"name=hong";h+=`Content-Type: ${p=="/api/chat"?"application/json":"application/x-www-form-urlencoded"}\nContent-Length: ${new TextEncoder().encode(b).length}\n\n${b}`}return h}
+function serve(m,p,inm){if(ov.checked)return[503,"Retry-After: 30\nContent-Type: text/html\n","<h1>잠시 후 다시 시도해 주세요</h1>","서버가 감당할 수 없을 만큼 바쁩니다(5xx는 서버 쪽 문제). Retry-After: 30초 뒤에 다시 오라는 뜻."];
+if(p=="/api/chat"){if(m!="POST")return[405,"Allow: POST\n","","/api/chat은 POST만 받습니다. 메서드가 틀리면 405."];return[200,"Content-Type: application/json\n",'{"answer":"포트 번호는 한 컴퓨터 안의 프로그램을 구별하는 번호입니다.","tokens":23}',"AI 서비스 API는 보통 POST로 JSON을 보내고 JSON으로 답을 받습니다."]}
+if(m=="POST")return[405,"Allow: GET, HEAD\n","","이 주소는 POST를 받지 않습니다."];
+switch(p){case"/":return[200,"Content-Type: text/html; charset=utf-8\nCache-Control: no-cache\n",'<!doctype html><html><head><title>Example</title>\n<link rel="icon" href="/logo.png">…',"성공. 브라우저는 이 HTML을 읽고 그 안의 그림·CSS·JS를 또 요청합니다."];
+case"/logo.png":{const et=ch.checked?'"v2"':'"v1"';if(inm&&inm==et)return[304,`ETag: ${et}\nCache-Control: max-age=60\n`,"","바뀌지 않았으니 갖고 있는 것을 쓰라는 답(304). 본문이 없어 아주 작습니다."];return[200,`Content-Type: image/png\nContent-Length: 18342\nETag: ${et}\nCache-Control: max-age=60\n`,"‰PNG… (그림 데이터 18,342바이트)",`그림을 받았습니다. Cache-Control: max-age=60 → 60초 동안은 다시 묻지 말고 캐시를 쓰라는 뜻. ETag ${et}는 이 파일 버전의 이름표입니다.`]}
+case"/old-page":return[301,"Location: /new-page\n","","주소가 영영 바뀌었다는 뜻(301). 브라우저는 Location을 보고 자동으로 다시 요청합니다."];
+case"/new-page":return[200,"Content-Type: text/html\n","<h1>새 주소의 페이지</h1>","이사 간 새 주소에서 성공."];
+case"/mypage":return ck.checked?[200,"Content-Type: text/html\nCache-Control: private\n","<h1>홍길동님의 마이페이지</h1>","쿠키의 세션 번호로 누구인지 알아보고 개인 페이지를 줬습니다. HTTP 자체는 상태가 없어(stateless) 매번 쿠키로 나를 알립니다."]:[401,'WWW-Authenticate: Bearer\n',"","누구인지 모릅니다(401). '로그인 쿠키 보내기'를 켜고 다시 보내 보세요."];
+case"/admin":return[403,"Content-Type: text/html\n","<h1>권한 없음</h1>",ck.checked?"누구인지는 알지만 관리자가 아니라서 거절(403). 401은 '누구세요?', 403은 '당신은 안 돼요'.":"관리자 페이지는 거절(403)."];
+default:return[404,"Content-Type: text/html\n","<h1>404 Not Found</h1>","그런 주소는 없습니다(404). 4xx는 요청한 쪽 문제."]}}
+function badge(c){return`<span class="code" style="background:${COLS[String(c)[0]]}">${c} ${MSG[c]}</span>`}
+function one(m,p,extra,inm){const r=req(m,p,extra),[c,hd,body,why]=serve(m,p,inm);const len=new TextEncoder().encode(body).length;let resp=`HTTP/1.1 ${c} ${MSG[c]}\nDate: (지금)\nServer: nginx\n${hd}`+(body&&!/Content-Length/.test(hd)?`Content-Length: ${len}\n`:"")+(m=="HEAD"||!body?"\n":`\n${body}`);seen.add(c);return{r,resp,c,why:(m=="HEAD"&&c==200?"HEAD라서 헤더만 오고 본문은 없습니다. ":"")+why,hd}}
+function send(){const m=me.value,p=pa.value;let L=[];
+if(p=="/logo.png"&&m=="GET"&&cache){if(now<cache.exp){rq.innerHTML='<span class="mut">(요청을 보내지 않음)</span>';rp.innerHTML="(브라우저 디스크 캐시에서 바로 꺼냄 · 0ms)";sc.innerHTML='<span class="code" style="background:#999">캐시</span>';log.textContent=`캐시 유효 기간이 ${cache.exp-now}초 남아 네트워크에 아예 나가지 않았습니다. 가장 빠른 요청은 보내지 않는 요청입니다.`+(ch.checked?"\n(서버의 그림이 바뀌었어도 기간 동안은 옛 그림을 씁니다. 그래서 파일 이름에 버전을 붙이기도 합니다.)":"");table();return}
+const o=one(m,p,`If-None-Match: ${cache.et}\n`,cache.et);show(o);if(o.c==304){cache.exp=now+60;log.textContent=`캐시 기간이 지나 "ETag가 ${cache.et} 그대로인가요?"(If-None-Match)만 물었습니다. → ${o.why}`}else if(o.c==200){cache={et:o.hd.match(/ETag: (\S+)/)[1],exp:now+60};log.textContent="ETag가 달라져(그림이 바뀜) 새 그림을 통째로 받았습니다."}else log.textContent=o.why;table();return}
+const o=one(m,p);show(o);let t=o.why;if(o.c==301){const o2=one("GET","/new-page");t+=`\n→ 자동으로 GET /new-page 를 다시 보냄 → ${o2.c} ${MSG[o2.c]}`;rp.innerHTML+=`<hr style="border-color:#444">`+fmt(o2.resp)}
+if(p=="/logo.png"&&m=="GET"&&o.c==200)cache={et:o.hd.match(/ETag: (\S+)/)[1],exp:now+60};log.textContent=t;table()}
+function show(o){rq.innerHTML=fmt(o.r);rp.innerHTML=fmt(o.resp);sc.innerHTML=badge(o.c)}
+function table(){clk.textContent=`(시계: ${now}초)`;ca.innerHTML="<tr><th>파일</th><th>ETag</th><th>남은 기간</th></tr>"+(cache?`<tr><td>/logo.png</td><td class="mono">${cache.et}</td><td>${cache.exp>now?cache.exp-now+"초":'<span class="bad">만료 (다음엔 물어봄)</span>'}</td></tr>`:'<tr><td colspan="3" class="mut">비어 있음</td></tr>');
+got.innerHTML=[...seen].sort().map(badge).join(" ")||'<span class="mut">아직 없음</span>'}
+go.onclick=send;tp.onclick=()=>{now+=30;table();log.textContent=`시간이 30초 흘렀습니다.`};pa.onchange=()=>{if(pa.value=="/api/chat")me.value="POST";else if(me.value=="POST")me.value="GET"};
+send();
+</script></body></html>

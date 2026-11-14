@@ -1,0 +1,35 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>방화벽 규칙 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css">
+<style>#rt td,#pt td{font-size:13px}#rt select,#rt input{padding:3px 5px;font-size:13px}#rt button{padding:2px 7px;font-size:12px;margin-right:2px}#rt td:last-child{white-space:nowrap}tr.match td{background:#fff2b3}.allow{color:#2e8b57;font-weight:700}.deny{color:#d9534f;font-weight:700}</style></head><body>
+<header><div class="ch">14장 시뮬레이터</div><h1>방화벽 규칙: 위에서부터, 처음 맞는 규칙 하나</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>회사 웹 서버(10.0.1.10)와 DB 서버(10.0.1.20) 앞에 방화벽이 있습니다. 목표는 오른쪽 '보안 정책'입니다.</li><li>[패킷 검사]를 누르면 들어오는 패킷 8개를 규칙 표의 <b>위에서부터</b> 비교해, 처음 맞는 규칙 하나로 허용/차단을 정합니다. 맞은 규칙이 노랗게 표시됩니다.</li><li>처음 규칙에는 실수가 있어 관리자의 SSH가 막히고 DB가 밖에 열려 있습니다. ↑↓로 순서를 바꾸고, 규칙을 고치거나 추가해서 모든 패킷이 '정책대로'가 되게 만들어 보세요.</li><li>맨 아래 '기본 정책'을 허용으로 바꾸면 어떤 위험이 생기는지도 확인합니다.</li></ol></div>
+<div class="card"><div style="background:#f6f3fd;border-radius:8px;padding:8px 12px"><b>보안 정책 (목표)</b> · 웹(TCP 443)은 누구나 허용 · SSH(TCP 22)는 관리자 PC 10.0.0.5에서만 · DB(TCP 3306)는 웹 서버 10.0.1.10에서만 · 그 밖의 것은 모두 차단<br><label><input type="checkbox" id="sf" checked> 상태 기반(stateful): 안에서 시작한 연결의 응답은 자동 허용</label></div>
+<b style="display:block;margin-top:8px">방화벽 규칙 (위에서부터 검사)</b><div style="overflow-x:auto"><table id="rt"></table></div><div class="row"><button class="sec" id="add">규칙 추가</button><button class="sec" id="rs">처음 규칙으로</button></div>
+<div class="row"><button id="go">패킷 검사</button><span id="sco" class="big" style="font-size:17px"></span></div>
+<table id="pt"></table><div class="log" id="log" style="margin-top:8px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 방화벽은 출발지·목적지 주소, 프로토콜, 포트를 보고 패킷을 허용하거나 막습니다. 규칙은 위에서부터 비교해 처음 맞는 것 하나만 적용합니다. 그래서 순서가 곧 정책입니다.<br>• 구체적인 규칙(관리자만 허용)을 넓은 규칙(SSH 모두 차단)보다 위에 둡니다. 맨 아래에는 "나머지는 모두 차단"을 둡니다(기본 거부).<br>• 상태 기반 방화벽은 연결 표를 기억해, 안에서 나간 요청의 응답은 따로 규칙이 없어도 통과시킵니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const INIT=[["allow","TCP","*","443"],["deny","TCP","*","22"],["allow","TCP","10.0.0.5","22"],["allow","TCP","*","3306"],["allow","ICMP","*","*"]];
+let R,DEF="deny";
+// [설명, 프로토콜, 출발지, 목적지:포트, 정책상 허용?, 응답 패킷?]
+const P=[["인터넷 사용자 → 웹","TCP","121.130.4.9","10.0.1.10:443",true],["해커의 SSH 시도","TCP","45.33.12.8","10.0.1.10:22",false],["관리자 PC의 SSH","TCP","10.0.0.5","10.0.1.10:22",true],["웹 서버 → DB","TCP","10.0.1.10","10.0.1.20:3306",true],["인터넷에서 DB 직접 접속","TCP","45.33.12.8","10.0.1.20:3306",false],["외부 ping","ICMP","45.33.12.8","10.0.1.10",false],["원격 데스크톱 스캔","TCP","45.33.12.8","10.0.1.10:3389",false],["DNS 응답 (웹 서버가 물어본 것)","UDP","8.8.8.8:53","10.0.1.10:50123",true,1]];
+function reset(){R=INIT.map(r=>[...r]);DEF="deny";table();pt.innerHTML="";sco.textContent="";log.textContent=""}
+function table(hl){rt.innerHTML="<tr><th>#</th><th>동작</th><th>프로토콜</th><th>출발지</th><th>목적지 포트</th><th></th></tr>"+R.map((r,i)=>`<tr${hl&&hl.has(i)?' class="match"':""}><td>${i+1}</td><td><select data-i="${i}" data-k="0"><option value="allow"${r[0]=="allow"?" selected":""}>허용</option><option value="deny"${r[0]=="deny"?" selected":""}>차단</option></select></td>
+<td><select data-i="${i}" data-k="1">${["TCP","UDP","ICMP","*"].map(v=>`<option${r[1]==v?" selected":""}>${v}</option>`).join("")}</select></td><td><input data-i="${i}" data-k="2" value="${r[2]}" style="width:110px" class="mono"></td><td><input data-i="${i}" data-k="3" value="${r[3]}" style="width:64px" class="mono"></td>
+<td><button class="sec" data-u="${i}">↑</button><button class="sec" data-d="${i}">↓</button><button class="sec" data-x="${i}">✕</button></td></tr>`).join("")+
+`<tr${hl&&hl.has(-1)?' class="match"':""}><td>-</td><td><select id="df"><option value="deny"${DEF=="deny"?" selected":""}>차단</option><option value="allow"${DEF=="allow"?" selected":""}>허용</option></select></td><td colspan="4" class="mut">기본 정책: 위 규칙에 하나도 안 맞으면</td></tr>`;
+rt.querySelectorAll("[data-k]").forEach(e=>e.onchange=()=>{R[+e.dataset.i][+e.dataset.k]=e.value.trim()||"*"});
+rt.querySelectorAll("[data-u]").forEach(b=>b.onclick=()=>{const i=+b.dataset.u;if(i>0){[R[i-1],R[i]]=[R[i],R[i-1]];table()}});
+rt.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{const i=+b.dataset.d;if(i<R.length-1){[R[i+1],R[i]]=[R[i],R[i+1]];table()}});
+rt.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{R.splice(+b.dataset.x,1);table()});df.onchange=()=>DEF=df.value}
+function match(r,p){const[,proto,src,dst]=p;const port=dst.includes(":")?dst.split(":")[1]:"*";return(r[1]=="*"||r[1]==proto)&&(r[2]=="*"||r[2]==src.split(":")[0])&&(r[3]=="*"||r[3]==port||proto=="ICMP"&&r[1]=="ICMP")}
+go.onclick=()=>{const hits=new Set();let good=0,L=[];
+const rows=P.map(p=>{let act,by;if(p[5]&&sf.checked){act="allow";by="연결 표(stateful)"}else{const i=R.findIndex(r=>match(r,p));if(i>=0){act=R[i][0];by=`규칙 ${i+1}`;hits.add(i)}else{act=DEF;by="기본 정책";hits.add(-1)}}
+const ok=(act=="allow")==p[4];if(ok)good++;else L.push(`✘ ${p[0]}: ${by}에 걸려 ${act=="allow"?"허용됨 → 정책은 차단이어야 함":"차단됨 → 정책은 허용이어야 함"}`);
+return`<tr><td>${p[0]}</td><td>${p[1]}</td><td class="mono">${p[2]}</td><td class="mono">${p[3]}</td><td>${by}</td><td class="${act}">${act=="allow"?"허용":"차단"}</td><td>${ok?'<span class="ok">정책대로</span>':'<span class="bad">틀림</span>'}</td></tr>`});
+table(hits);pt.innerHTML="<tr><th>들어온 패킷</th><th>프로토콜</th><th>출발지</th><th>목적지</th><th>적용</th><th>결과</th><th>정책</th></tr>"+rows.join("");
+sco.innerHTML=good==P.length?'<span class="ok">8 / 8 정책대로! 🎉</span>':`<span class="bad">${good} / ${P.length} 정책대로</span>`;
+log.textContent=(L.length?L.join("\n")+"\n\n힌트: 관리자 SSH 허용 규칙을 'SSH 모두 차단'보다 위로, DB 규칙의 출발지를 10.0.1.10으로, ping 허용은 지우거나 차단으로.":"모든 패킷이 정책대로 처리됩니다. 순서와 범위가 맞는 좋은 규칙표입니다.")+(DEF=="allow"?"\n⚠️ 기본 정책이 '허용'이면 규칙에 없는 모든 포트가 열립니다. 새로 생긴 서비스(예: 3389)가 그대로 노출됩니다.":"")+(!sf.checked?"\n⚠️ 상태 기반을 끄면 웹 서버가 물어본 DNS의 응답까지 막혀 이름 풀이가 안 됩니다. 그렇다고 UDP 출발 포트 53을 모두 열면 위험합니다.":"")};
+add.onclick=()=>{R.push(["allow","TCP","*","80"]);table()};rs.onclick=reset;reset();
+</script></body></html>

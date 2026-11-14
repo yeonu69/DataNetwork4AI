@@ -1,0 +1,45 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>로드밸런싱 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">14장 시뮬레이터</div><h1>로드밸런싱: AI 요청을 GPU 서버에 나눠 주기</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>챗봇 질문(요청)이 계속 들어오고, 로드밸런서가 GPU 서버 4대 중 하나를 골라 보냅니다. 요청마다 답의 길이가 달라 처리 시간이 제각각입니다(짧은 답 ●, 긴 답 ⬤). 4번 서버는 구형이라 절반 속도입니다.</li><li>방식을 '라운드 로빈'으로 두고 [시작]을 눌러 대기열과 응답 시간을 봅니다. 차례대로 나눠 주면 느린 서버에 줄이 깁니다.</li><li>'가장 한가한 서버'로 바꾸고 [기록 지우기] 후 비교합니다. P99(가장 느린 1%) 응답 시간이 어떻게 달라지나요?</li><li>[2번 서버 고장]을 눌러 보세요. 상태 검사(헬스 체크)를 켜고 끄며, 고장 난 서버로 요청이 계속 가는지 확인합니다.</li></ol></div>
+<div class="card"><div class="row"><label>방식 <select id="al"><option value="rr">라운드 로빈 (차례대로)</option><option value="rnd">무작위</option><option value="lc">가장 한가한 서버 (대기 가장 적은 곳)</option><option value="p2">무작위 두 개 중 한가한 쪽</option></select></label><label>요청량 <input type="range" id="lam" min="2" max="7" value="5"> <b id="lv"></b></label></div>
+<div class="row"><button id="go">시작</button><button class="sec" id="cl">기록 지우기</button><button class="sec" id="kill" style="border-color:#d9534f;color:#d9534f">2번 서버 고장</button><label><input type="checkbox" id="hc" checked> 헬스 체크 (2초마다 확인)</label></div>
+<canvas id="cv" width="800" height="330"></canvas>
+<table id="tb" style="margin-top:8px"></table><div class="log" id="log" style="margin-top:8px;max-height:120px"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 로드밸런서는 하나의 주소로 들어온 요청을 여러 서버에 나눠, 한 대보다 많은 요청을 처리하고 한 대가 고장 나도 서비스가 계속되게 합니다.<br>• 라운드 로빈은 단순하지만 요청 크기와 서버 성능이 제각각이면 줄이 한쪽에 몰립니다. AI 추론처럼 처리 시간 차이가 큰 일에는 '가장 한가한 서버' 방식이 꼬리 지연을 크게 줄입니다.<br>• 헬스 체크로 고장 난 서버를 빨리 빼야 합니다. 빠지기 전까지 그쪽으로 간 요청은 실패합니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const SP=[1,1,1,.5],ctx=cv.getContext("2d");let S,run=false,last=0,rr=0;
+function init(){S={t:0,srv:SP.map((sp,i)=>({i,sp,q:[],cur:null,up:true,inLB:true,done:0})),fly:[],lat:[],fail:0,next:0,lastHC:0,downAt:null};rr=0}
+function say(m){log.textContent+=`[${(S.t/1000).toFixed(1)}s] ${m}\n`;log.scrollTop=1e9}
+const load=s=>s.q.reduce((a,r)=>a+r.w,0)+(s.cur?s.cur.left:0);
+function pick(){const c=S.srv.filter(s=>s.inLB);if(!c.length)return null;const a=al.value;
+if(a=="rr"){const s=c[rr%c.length];rr++;return s}if(a=="rnd")return c[Math.floor(Math.random()*c.length)];
+if(a=="lc")return c.reduce((b,s)=>(s.q.length+(s.cur?1:0))/s.sp<(b.q.length+(b.cur?1:0))/b.sp?s:b);
+const x=c[Math.floor(Math.random()*c.length)],y=c[Math.floor(Math.random()*c.length)];return(x.q.length+(x.cur?1:0))/x.sp<=(y.q.length+(y.cur?1:0))/y.sp?x:y}
+function tick(dt){S.t+=dt;const lam=+lam_();
+while(S.next<=S.t){const long=Math.random()<.25,w=long?1200:250;const r={t0:S.next,w,long};const s=pick();if(s)S.fly.push({r,s,t:S.next});else{S.fail++}S.next+=-Math.log(1-Math.random())/lam*1000}
+for(const f of S.fly){if(S.t-f.t>=250){f.gone=1;if(f.s.up)f.s.q.push(f.r);else{S.fail++;f.s.lost=(f.s.lost||0)+1}}}S.fly=S.fly.filter(f=>!f.gone);
+for(const s of S.srv){if(!s.up){continue}let left=dt*s.sp;while(left>0){if(!s.cur){if(!s.q.length)break;const r=s.q.shift();s.cur={r,left:r.w}}const u=Math.min(left,s.cur.left);s.cur.left-=u;left-=u;if(s.cur.left<=0){S.lat.push([S.t-s.cur.r.t0,al.value]);s.done++;s.cur=null}}}
+if(hc.checked&&S.t-S.lastHC>=2000){S.lastHC=S.t;for(const s of S.srv){if(!s.up&&s.inLB){s.inLB=false;say(`헬스 체크: ${s.i+1}번 서버 응답 없음 → 목록에서 뺌 (그동안 실패한 요청 ${s.lost||0}개)`)}if(s.up&&!s.inLB){s.inLB=true;say(`헬스 체크: ${s.i+1}번 서버 복구 확인 → 다시 넣음`)}}}
+if(S.lat.length>4000)S.lat=S.lat.slice(-4000)}
+const lam_=()=>lam.value;
+function pct(a,q){if(!a.length)return 0;const b=[...a].sort((x,y)=>x-y);return b[Math.min(b.length-1,Math.floor(q*b.length))]}
+function draw(){ctx.clearRect(0,0,800,330);const LBx=220,LBy=165;ctx.fillStyle="#333";ctx.font="bold 13px sans-serif";ctx.fillText("사용자 요청",20,155);ctx.font="11px sans-serif";ctx.fillStyle="#666";ctx.fillText(`1초에 약 ${lam.value}개`,20,172);
+ctx.strokeStyle="#cfc6ea";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(110,LBy);ctx.lineTo(LBx-50,LBy);ctx.stroke();
+ctx.fillStyle="#6b4fbb";ctx.fillRect(LBx-50,LBy-35,100,70);ctx.fillStyle="#fff";ctx.font="bold 13px sans-serif";ctx.textAlign="center";ctx.fillText("로드밸런서",LBx,LBy-4);ctx.font="11px sans-serif";ctx.fillText({rr:"라운드 로빈",rnd:"무작위",lc:"가장 한가한 곳",p2:"둘 중 한가한 곳"}[al.value],LBx,LBy+14);ctx.textAlign="left";
+S.srv.forEach((s,i)=>{const y=30+i*80,x=470;ctx.strokeStyle=s.inLB?"#cfc6ea":"#eee";ctx.lineWidth=2;ctx.setLineDash(s.inLB?[]:[4,4]);ctx.beginPath();ctx.moveTo(LBx+50,LBy);ctx.lineTo(x-10,y+25);ctx.stroke();ctx.setLineDash([]);
+ctx.fillStyle=s.up?"#fff":"#ffe3e3";ctx.strokeStyle=s.up?"#9b86d9":"#d9534f";ctx.lineWidth=2;ctx.fillRect(x-10,y,120,50);ctx.strokeRect(x-10,y,120,50);ctx.fillStyle="#333";ctx.font="bold 12px sans-serif";ctx.fillText(`GPU 서버 ${i+1}${s.sp<1?" (구형)":""}`,x-2,y+17);ctx.font="11px sans-serif";ctx.fillStyle=s.up?"#666":"#d9534f";ctx.fillText(s.up?`처리 ${s.done}건`:"고장!",x-2,y+33);
+if(s.cur){const r=s.cur.left/s.cur.r.w;ctx.fillStyle="#eee";ctx.fillRect(x-2,y+39,104,6);ctx.fillStyle="#2e8b57";ctx.fillRect(x-2,y+39,104*(1-r),6)}
+let qx=x+118;ctx.fillStyle="#666";ctx.font="11px sans-serif";ctx.fillText(`대기 ${s.q.length}`,qx,y+12);s.q.slice(0,16).forEach((r,k)=>{ctx.fillStyle=r.long?"#e69500":"#9b86d9";ctx.beginPath();ctx.arc(qx+6+k*13,y+30,r.long?6:4,0,7);ctx.fill()});if(s.q.length>16){ctx.fillText("…",qx+6+16*13,y+33)}});
+for(const f of S.fly){const u=Math.min(1,(S.t-f.t)/250),i=f.s.i,x=LBx+50+(460-LBx-50)*u,y=LBy+(30+i*80+25-LBy)*u;ctx.fillStyle=f.r.long?"#e69500":"#9b86d9";ctx.beginPath();ctx.arc(x,y,f.r.long?6:4,0,7);ctx.fill()}
+const L=S.lat.slice(-400).map(x=>x[0]);ctx.fillStyle="#333";ctx.font="12px sans-serif";ctx.fillText(`시간 ${(S.t/1000).toFixed(0)}초 · 완료 ${S.lat.length} · 실패 ${S.fail}`,20,250);ctx.fillText(`최근 응답 시간 P50 ${(pct(L,.5)/1000).toFixed(1)}초 · P99 ${(pct(L,.99)/1000).toFixed(1)}초`,20,268)}
+let hist={};function rec(){if(S.lat.length<30)return;const L=S.lat.map(x=>x[0]);hist[al.value]=[(pct(L,.5)/1000).toFixed(2),(pct(L,.99)/1000).toFixed(2),S.lat.length,S.fail];
+const nm={rr:"라운드 로빈",rnd:"무작위",lc:"가장 한가한 서버",p2:"무작위 두 개 중 한가한 쪽"};tb.innerHTML="<tr><th>방식</th><th>P50 응답</th><th>P99 응답</th><th>완료</th><th>실패</th></tr>"+Object.entries(hist).map(([k,v])=>`<tr${k==al.value?' class="hl"':""}><td>${nm[k]}</td><td>${v[0]}초</td><td><b>${v[1]}초</b></td><td>${v[2]}</td><td>${v[3]}</td></tr>`).join("")}
+function loop(n){const dt=Math.min(50,n-last);last=n;if(run){for(let k=0;k<4;k++)tick(dt);if(Math.floor(S.t/1000)!=Math.floor((S.t-4*dt)/1000))rec()}draw();requestAnimationFrame(loop)}
+go.onclick=()=>{run=!run;go.textContent=run?"일시정지":"계속";if(run&&!S.t)say(`시작: ${al.selectedOptions[0].text}`)};
+cl.onclick=al.onchange=()=>{const was=S.srv[1].up;init();if(!was)S.srv[1].up=false;log.textContent="";say(`새로 측정: ${al.selectedOptions[0].text}`)};
+kill.onclick=()=>{const s=S.srv[1];s.up=!s.up;if(!s.up){s.q=[];s.cur=null;s.lost=0;kill.textContent="2번 서버 고치기";say(`2번 서버 고장! ${hc.checked?"헬스 체크가 알아챌 때까지 그쪽으로 간 요청은 실패합니다.":"헬스 체크가 꺼져 있어 로드밸런서는 계속 그쪽으로 보냅니다."}`)}else{kill.textContent="2번 서버 고장";say("2번 서버를 고쳤습니다."+(hc.checked?" 헬스 체크가 확인하면 다시 받습니다.":""));if(!hc.checked)s.inLB=true}};
+hc.onchange=()=>{if(!hc.checked)S.srv.forEach(s=>s.inLB=true)};
+lam.oninput=()=>lv.textContent=`초당 ${lam.value}개`;lam.oninput();init();last=performance.now();requestAnimationFrame(loop);
+</script></body></html>
