@@ -1,0 +1,29 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>신호의 3요소와 디지털 변조 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">3장 시뮬레이터</div><h1>신호의 3요소와 디지털 변조</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>진폭, 주파수, 위상 슬라이더를 하나씩 움직이며 회색 기준 파형과 보라색 파형이 어떻게 달라지는지 봅니다.</li><li>아래 '비트 실어 보내기'에서 ASK, FSK, PSK를 차례로 고릅니다.</li><li>비트가 1일 때와 0일 때 파형의 무엇(진폭, 주파수, 위상)이 바뀌는지 찾아봅니다.</li><li>비트 칸에 원하는 0과 1을 입력해 직접 실어 보세요.</li></ol></div>
+<div class="card"><h2>① 신호의 3요소</h2><table><tr><td>진폭 (세기)</td><td><input type="range" id="A" min="0.1" max="1" step="0.05" value="0.8"> <b id="Av"></b></td></tr><tr><td>주파수 (1초에 몇 번 반복)</td><td><input type="range" id="F" min="1" max="8" step="0.5" value="2"> <b id="Fv"></b> Hz</td></tr><tr><td>위상 (시작 위치)</td><td><input type="range" id="P" min="0" max="360" step="15" value="0"> <b id="Pv"></b>°</td></tr></table>
+<canvas id="c1" width="760" height="200"></canvas><div class="mut" id="m1"></div></div>
+<div class="card"><h2>② 비트 실어 보내기 (디지털 변조)</h2><div class="row"><label>비트 <input type="text" id="bits" value="10110010" maxlength="16" style="width:170px" class="mono"></label>
+<button class="sec" data-m="ASK">ASK (진폭)</button><button class="sec" data-m="FSK">FSK (주파수)</button><button class="sec" data-m="PSK">PSK (위상)</button></div>
+<canvas id="c2" width="760" height="220"></canvas><div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 모든 신호는 진폭(얼마나 센가), 주파수(얼마나 자주 반복하나), 위상(어디서 시작하나) 세 가지로 설명됩니다.<br>• 디지털 변조는 이 셋 중 하나를 0과 1에 따라 바꿔 비트를 전파에 싣는 기술입니다. ASK는 진폭, FSK는 주파수, PSK는 위상을 바꿉니다.<br>• 잡음은 주로 진폭을 흔들기 때문에 ASK가 가장 약하고, Wi-Fi와 5G는 위상과 진폭을 함께 쓰는 QAM(5장)을 씁니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+let mode="ASK";
+function axes(g,W,H){g.clearRect(0,0,W,H);g.strokeStyle="#ddd";g.beginPath();g.moveTo(30,H/2);g.lineTo(W-10,H/2);g.stroke();g.fillStyle="#666";g.font="11px sans-serif";g.fillText("시간 →",W-50,H/2+14)}
+function d1(){const g=c1.getContext('2d'),W=760,H=200,a=+A.value,f=+F.value,p=+P.value*Math.PI/180;Av.textContent=a;Fv.textContent=f;Pv.textContent=P.value;axes(g,W,H);
+const X=t=>30+t*(W-40),Y=v=>H/2-v*85;
+g.strokeStyle="#bbb";g.lineWidth=2;g.beginPath();for(let i=0;i<=600;i++){const t=i/600;i?g.lineTo(X(t),Y(Math.sin(2*Math.PI*2*t))):g.moveTo(X(t),Y(Math.sin(2*Math.PI*2*t)))}g.stroke();
+g.strokeStyle="#6b4fbb";g.lineWidth=3;g.beginPath();for(let i=0;i<=600;i++){const t=i/600,v=a*Math.sin(2*Math.PI*f*t+p);i?g.lineTo(X(t),Y(v)):g.moveTo(X(t),Y(v))}g.stroke();g.lineWidth=1;
+g.fillStyle="#666";g.fillText("0초",26,H-6);g.fillText("1초",W-24,H-6);m1.textContent=`1초 동안 ${f}번 반복 → 주기 ${(1000/f).toFixed(0)} ms. 회색은 기준(진폭 1, 2 Hz, 위상 0°)입니다.`}
+function d2(){const g=c2.getContext('2d'),W=760,H=220;const b=(bits.value.replace(/[^01]/g,"")||"0").split("").map(Number);axes(g,W,H);
+const n=b.length,X=t=>30+t*(W-40),Y=v=>H/2+10-v*70;g.font="13px sans-serif";
+b.forEach((v,i)=>{const x0=X(i/n),x1=X((i+1)/n);g.fillStyle=i%2?"#f6f3fd":"#fff";g.fillRect(x0,30,x1-x0,H-40);g.fillStyle=v?"#6b4fbb":"#e69500";g.fillText(v,(x0+x1)/2-4,22)});
+g.strokeStyle="#6b4fbb";g.lineWidth=2.5;g.beginPath();const fc=3;for(let i=0;i<=1200;i++){const t=i/1200,k=Math.min(n-1,Math.floor(t*n)),bit=b[k],tl=t*n;let v;
+if(mode=="ASK")v=(bit?1:0.25)*Math.sin(2*Math.PI*fc*tl);else if(mode=="FSK")v=Math.sin(2*Math.PI*(bit?4:2)*tl);else v=Math.sin(2*Math.PI*fc*tl+(bit?0:Math.PI));
+i?g.lineTo(X(t),Y(v)):g.moveTo(X(t),Y(v))}g.stroke();g.lineWidth=1;
+log.textContent={ASK:"ASK: 1이면 큰 진폭, 0이면 작은 진폭. 만들기 쉽지만 잡음이 진폭을 흔들면 0과 1을 헷갈립니다.",FSK:"FSK: 1이면 빠른 주파수(촘촘한 물결), 0이면 느린 주파수. 잡음에 강해 옛 모뎀과 블루투스 일부가 썼습니다.",PSK:"PSK: 1이면 그대로, 0이면 위상을 180° 뒤집어 시작합니다. 비트가 바뀌는 경계에서 파형이 '꺾이는' 곳을 찾아보세요."}[mode];
+document.querySelectorAll('[data-m]').forEach(x=>x.className=x.dataset.m==mode?"":"sec")}
+[A,F,P].forEach(e=>e.oninput=d1);bits.oninput=d2;document.querySelectorAll('[data-m]').forEach(x=>x.onclick=()=>{mode=x.dataset.m;d2()});d1();d2();
+</script></body></html>

@@ -1,0 +1,24 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>직렬화 지연 계산기 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">3장 시뮬레이터</div><h1>직렬화 지연 계산기</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>패킷 크기와 링크 속도를 고르고 [밀어 넣기]를 누릅니다. 비트가 한 줄로 서서 전선 위로 하나씩 나가는 모습이 느린 화면으로 재생됩니다.</li><li>마지막 비트가 나갈 때까지 걸린 시간이 직렬화(전송) 지연입니다.</li><li>표에서 같은 패킷이 10 Mbps부터 800 Gbps까지 각각 얼마나 걸리는지 비교합니다.</li><li>홉 수를 늘려 보세요. 라우터는 패킷을 다 받은 뒤 다시 보내므로(저장 후 전달) 직렬화 지연이 홉마다 더해집니다.</li></ol></div>
+<div class="card"><div class="row"><label>패킷 크기 <select id="L"><option>64</option><option>576</option><option selected>1500</option><option>9000</option></select> 바이트</label>
+<label>링크 속도 <select id="R"><option value="1e7">10 Mbps</option><option value="1e8">100 Mbps</option><option value="1e9" selected>1 Gbps</option><option value="1e10">10 Gbps</option><option value="1e11">100 Gbps</option><option value="4e11">400 Gbps</option><option value="8e11">800 Gbps</option></select></label>
+<label>홉 수 <input type="range" id="H" min="1" max="15" value="1"> <b id="Hv"></b></label><button id="go">밀어 넣기</button></div>
+<svg class="stage" id="sv" viewBox="0 0 800 130"></svg>
+<div class="row"><span class="pill">직렬화 지연(1홉)</span><span class="big" id="one"></span>&nbsp;<span class="pill">홉 수만큼</span><span class="big" id="all"></span></div>
+<table id="tb"></table></div>
+<div class="key"><b>핵심 3줄</b><br>• 직렬화 지연 = 패킷 크기(비트) ÷ 링크 속도(bps). 1500바이트는 12,000비트라서 1 Gbps에서 12 µs가 걸립니다.<br>• 링크 속도가 10배 빨라지면 직렬화 지연은 정확히 10분의 1이 됩니다. 거리(전파 지연)와는 상관이 없습니다.<br>• 저장 후 전달 방식에서는 홉마다 다시 직렬화하므로, 느린 링크를 여러 번 지나면 지연이 쌓입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const fmt=s=>s>=1e-3?(s*1e3).toFixed(3)+" ms":s>=1e-6?(s*1e6).toFixed(2)+" µs":(s*1e9).toFixed(1)+" ns";
+const RS=[[1e7,"10 Mbps"],[1e8,"100 Mbps"],[1e9,"1 Gbps"],[1e10,"10 Gbps"],[1e11,"100 Gbps"],[4e11,"400 Gbps"],[8e11,"800 Gbps"]];let anim=null;
+function base(p){let s=`<rect x="20" y="40" width="120" height="50" rx="8" fill="#fff" stroke="#9b86d9" stroke-width="2"/><text x="80" y="70" text-anchor="middle" font-size="13" font-weight="700">보내는 NIC</text><line x1="140" y1="65" x2="780" y2="65" stroke="#cfc6ea" stroke-width="16"/>`;
+const n=40;for(let i=0;i<n;i++){const x=p===undefined?-99:150+(p*n-i)*15;if(x>=145&&x<780)s+=`<rect x="${x}" y="58" width="11" height="14" rx="2" fill="${i%2?"#6b4fbb":"#e6457a"}"/>`}
+s+=`<text x="150" y="110" font-size="12" fill="#666">비트(점 하나 ≈ 패킷의 1/40) →</text>`;if(p!==undefined)s+=`<text x="780" y="30" text-anchor="end" font-size="13" fill="#6b4fbb">경과 ${fmt(p*cur())}</text>`;sv.innerHTML=s}
+function cur(){return +L.value*8/+R.value}
+function run(){Hv.textContent=H.value;const t=cur();one.textContent=fmt(t);all.textContent=fmt(t*+H.value);
+let h="<tr><th>링크 속도</th><th>1홉 직렬화 지연</th><th>"+H.value+"홉 합계</th><th>1초에 보낼 수 있는 패킷 수</th></tr>";RS.forEach(([r,n])=>{const x=+L.value*8/r;h+=`<tr class="${r==+R.value?"hl":""}"><td>${n}</td><td>${fmt(x)}</td><td>${fmt(x*H.value)}</td><td>${Math.floor(1/x).toLocaleString()}</td></tr>`});tb.innerHTML=h;base()}
+go.onclick=()=>{cancelAnimationFrame(anim);const t0=performance.now();function f(t){const u=Math.min(1,(t-t0)/2500);base(u);u<1?anim=requestAnimationFrame(f):0}anim=requestAnimationFrame(f)};
+L.onchange=R.onchange=run;H.oninput=run;run();
+</script></body></html>

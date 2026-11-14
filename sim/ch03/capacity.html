@@ -1,0 +1,30 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>나이퀴스트와 섀넌의 한계 | 데이터 통신과 컴퓨터 네트워크</title><link rel="stylesheet" href="../common.css"></head><body>
+<header><div class="ch">3장 시뮬레이터</div><h1>나이퀴스트와 섀넌의 한계</h1></header><main>
+<div class="card how"><b>이렇게 해 보세요</b><ol><li>상황 버튼(전화선, Wi-Fi 20 MHz, Wi-Fi 160 MHz, 5G)을 눌러 대역폭과 신호 대 잡음비(SNR)를 불러옵니다.</li><li>나이퀴스트 공식은 잡음이 없을 때, 신호 단계 수(M)를 늘리면 속도가 계속 오른다고 말합니다.</li><li>섀넌 공식은 잡음이 있을 때 넘을 수 없는 천장을 알려 줍니다. M을 아무리 늘려도 섀넌 천장을 넘지 못하는 것을 확인합니다.</li><li>SNR을 10 dB 올릴 때와 대역폭을 2배로 할 때, 어느 쪽이 속도를 더 올리는지 비교해 봅니다.</li></ol></div>
+<div class="card"><div class="row"><button class="sec" data-p="0">전화선</button><button class="sec" data-p="1">Wi-Fi 20 MHz</button><button class="sec" data-p="2">Wi-Fi 160 MHz</button><button class="sec" data-p="3">5G 100 MHz</button></div>
+<table><tr><td>대역폭 B</td><td><input type="range" id="B" min="3" max="9.3" step="0.05" value="7.3"> <b id="Bv"></b></td></tr>
+<tr><td>신호 대 잡음비 SNR</td><td><input type="range" id="S" min="0" max="50" value="25"> <b id="Sv"></b> dB</td></tr>
+<tr><td>신호 단계 수 M</td><td><select id="M"><option>2</option><option>4</option><option>16</option><option selected>64</option><option>256</option><option>1024</option><option>4096</option></select></td></tr></table>
+<canvas id="cv" width="760" height="250" style="margin-top:8px"></canvas>
+<div class="row"><span class="pill">나이퀴스트 (잡음 없음)</span><b id="ny" class="big" style="color:#2e8b57"></b>&nbsp;<span class="pill">섀넌 천장</span><b id="sh" class="big" style="color:#d9534f"></b></div>
+<div class="log" id="log"></div></div>
+<div class="key"><b>핵심 3줄</b><br>• 나이퀴스트: 최대 속도 = 2 × 대역폭 × log₂(신호 단계 수). 잡음이 없다면 단계를 늘릴수록 빨라집니다.<br>• 섀넌: 최대 속도 = 대역폭 × log₂(1 + SNR). 잡음이 있으면 어떤 기술로도 이 천장을 넘을 수 없습니다.<br>• 그래서 빨라지는 가장 확실한 방법은 대역폭을 넓히는 것이고, Wi-Fi와 5G가 더 넓은 채널을 쓰려는 이유입니다.</div>
+</main><footer>데이터 통신과 컴퓨터 네트워크 · 실습 시뮬레이터 · <a href="../index.html">전체 목록</a></footer><script src="../list.js"></script><script src="../nav.js"></script>
+<script>
+const PRE=[[Math.log10(3100),30,"16"],[Math.log10(20e6),25,"64"],[Math.log10(160e6),35,"1024"],[8,20,"256"]];
+const hz=v=>v>=1e9?(v/1e9).toFixed(2)+" GHz":v>=1e6?(v/1e6).toFixed(v<1e7?1:0)+" MHz":v>=1e3?(v/1e3).toFixed(1)+" kHz":v.toFixed(0)+" Hz";
+const bp=v=>v>=1e9?(v/1e9).toFixed(2)+" Gbps":v>=1e6?(v/1e6).toFixed(1)+" Mbps":v>=1e3?(v/1e3).toFixed(1)+" kbps":v.toFixed(0)+" bps";
+const g=cv.getContext('2d');
+function run(){const b=Math.pow(10,+B.value),s=+S.value,m=+M.value,snr=Math.pow(10,s/10);Bv.textContent=hz(b);Sv.textContent=s;
+const n=2*b*Math.log2(m),c=b*Math.log2(1+snr);ny.textContent=bp(n);sh.textContent=bp(c);
+const W=760,H=250,X=d=>50+d/50*(W-70),mx=b*Math.log2(1+1e5)*1.05,Y=v=>H-30-v/mx*(H-50);g.clearRect(0,0,W,H);g.font="11px sans-serif";g.fillStyle="#666";
+for(let d=0;d<=50;d+=10){g.fillText(d+" dB",X(d)-12,H-12)}g.fillText("SNR →",W-50,H-12);
+g.strokeStyle="#d9534f";g.lineWidth=3;g.beginPath();for(let d=0;d<=50;d+=0.5){const v=b*Math.log2(1+Math.pow(10,d/10));d?g.lineTo(X(d),Y(v)):g.moveTo(X(d),Y(v))}g.stroke();
+g.strokeStyle="#2e8b57";g.setLineDash([6,4]);g.beginPath();g.moveTo(50,Y(Math.min(n,mx)));g.lineTo(W-20,Y(Math.min(n,mx)));g.stroke();g.setLineDash([]);g.lineWidth=1;
+g.fillStyle="#2e8b57";g.fillText(`나이퀴스트 ${bp(n)} (M=${m})`,60,Math.max(14,Y(Math.min(n,mx))-6));g.fillStyle="#d9534f";g.fillText("섀넌 천장",X(44),Y(b*Math.log2(1+Math.pow(10,4.4)))-8);
+g.fillStyle="#6b4fbb";g.beginPath();g.arc(X(s),Y(c),7,0,7);g.fill();
+const real=Math.min(n,c),need=10*Math.log10(Math.pow(m,1)-1);
+log.textContent=`나이퀴스트 = 2 × ${hz(b)} × log₂(${m}) = ${bp(n)}\n섀넌 = ${hz(b)} × log₂(1 + ${snr.toFixed(0)}) = ${bp(c)}\n→ 실제로 기대할 수 있는 최대값은 둘 중 작은 ${bp(real)}입니다.`+(n>c?`\n   M=${m}단계를 구분하려면 SNR이 대략 ${need.toFixed(0)} dB는 되어야 하는데 지금은 ${s} dB라서, 잡음 때문에 단계를 헷갈리게 됩니다.`:`\n   잡음 여유가 있으니 M을 더 늘려 볼 수 있습니다.`)}
+[B,S].forEach(e=>e.oninput=run);M.onchange=run;document.querySelectorAll('[data-p]').forEach(x=>x.onclick=()=>{const p=PRE[+x.dataset.p];B.value=p[0];S.value=p[1];M.value=p[2];run()});run();
+</script></body></html>
