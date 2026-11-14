@@ -2,24 +2,24 @@
 
 책 「데이터 통신과 컴퓨터 네트워크」의 실습 자료 저장소입니다.
 
-- `sim/` 장별 HTML 시뮬레이터 15개. 브라우저로 바로 열립니다. 온라인 주소: https://yeonu69.github.io/DataNetwork4AI/sim/
+- `sim/` 장별 HTML 시뮬레이터 79개. 브라우저로 바로 열립니다. 온라인 주소: https://yeonu69.github.io/DataNetwork4AI/sim/
 - `captures/` 본문 Wireshark 그림에 쓴 캡처 파일(.pcapng). Wireshark로 열면 책과 같은 화면을 볼 수 있습니다.
 - `tools/wireshark_lab/` 캡처에 쓴 리눅스 가상 실습망(network namespace) 스크립트.
 
-| 장 | 시뮬레이터 |
+| 장 | 시뮬레이터 (클릭하면 바로 실행) |
 |---|---|
-| 1장 | [패킷 여행 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch01/) |
-| 2장 | [캡슐화 포장 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch02/) |
-| 3장 | [아날로그-디지털 변환 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch03/) |
-| 4장 | [전송 매체 거리·감쇠 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch04/) |
-| 5장 | [CSMA 충돌과 백오프 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch05/) |
-| 6장 | [패리티와 CRC 오류 검출 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch06/) |
-| 7장 | [스위치 MAC 주소 학습 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch07/) |
-| 8장 | [Wi-Fi 채널 배치와 로밍 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch08/) |
-| 9장 | [서브넷 계산기](https://yeonu69.github.io/DataNetwork4AI/sim/ch09/) |
-| 10장 | [traceroute와 TTL 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch10/) |
-| 11장 | [최단 경로(다익스트라) 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch11/) |
-| 12장 | [NAT 변환 표 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch12/) |
-| 13장 | [TCP 혼잡 제어 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch13/) |
-| 14장 | [DNS 이름 풀이 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch14/) |
-| 15장 | [링 올리듀스 시뮬레이터](https://yeonu69.github.io/DataNetwork4AI/sim/ch15/) |
+| 1장 네트워크의 시작과 컴퓨팅 환경 | [패킷 여행](https://yeonu69.github.io/DataNetwork4AI/sim/ch01/index.html)<br>[패킷으로 쪼개 보내기](https://yeonu69.github.io/DataNetwork4AI/sim/ch01/packet.html)<br>[지연 4형제 계산기](https://yeonu69.github.io/DataNetwork4AI/sim/ch01/delay.html)<br>[지연·손실·간섭 체험](https://yeonu69.github.io/DataNetwork4AI/sim/ch01/loss.html)<br>[클라이언트/서버와 P2P](https://yeonu69.github.io/DataNetwork4AI/sim/ch01/cs-p2p.html)<br>[Wireshark 동작 한눈에](https://yeonu69.github.io/DataNetwork4AI/sim/ch01/wireshark.html) |
+| 2장 네트워크 계층 모델과 데이터 캡슐화 | [캡슐화 포장](https://yeonu69.github.io/DataNetwork4AI/sim/ch02/index.html)<br>[회선 교환과 패킷 교환](https://yeonu69.github.io/DataNetwork4AI/sim/ch02/switching.html)<br>[계층 맞히기 퀴즈](https://yeonu69.github.io/DataNetwork4AI/sim/ch02/layers.html)<br>[주소 4종 세트 여행](https://yeonu69.github.io/DataNetwork4AI/sim/ch02/address.html)<br>[헤더 오버헤드와 RoCEv2](https://yeonu69.github.io/DataNetwork4AI/sim/ch02/overhead.html) |
+| 3장 신호 처리와 디지털 변환 | [아날로그-디지털 변환](https://yeonu69.github.io/DataNetwork4AI/sim/ch03/index.html)<br>[신호의 3요소와 디지털 변조](https://yeonu69.github.io/DataNetwork4AI/sim/ch03/wave.html)<br>[나이퀴스트와 섀넌의 한계](https://yeonu69.github.io/DataNetwork4AI/sim/ch03/capacity.html)<br>[직렬화 지연 계산기](https://yeonu69.github.io/DataNetwork4AI/sim/ch03/serial.html)<br>[NRZ와 PAM4 눈 모양](https://yeonu69.github.io/DataNetwork4AI/sim/ch03/pam4.html) |
+| 4장 케이블과 무선 | [전송 매체 거리·감쇠](https://yeonu69.github.io/DataNetwork4AI/sim/ch04/index.html)<br>[광섬유 전반사](https://yeonu69.github.io/DataNetwork4AI/sim/ch04/fiber.html)<br>[속도·듀플렉스 협상](https://yeonu69.github.io/DataNetwork4AI/sim/ch04/autoneg.html)<br>[2.4GHz와 5GHz](https://yeonu69.github.io/DataNetwork4AI/sim/ch04/band.html)<br>[2.4GHz 채널 겹침](https://yeonu69.github.io/DataNetwork4AI/sim/ch04/channel24.html) |
+| 5장 공유 매체와 다중 접속 | [CSMA 충돌과 백오프](https://yeonu69.github.io/DataNetwork4AI/sim/ch05/index.html)<br>[허브와 스위치](https://yeonu69.github.io/DataNetwork4AI/sim/ch05/hubswitch.html)<br>[숨은 단말과 RTS/CTS](https://yeonu69.github.io/DataNetwork4AI/sim/ch05/hidden.html)<br>[QAM 성상도](https://yeonu69.github.io/DataNetwork4AI/sim/ch05/qam.html)<br>[다중 접속 4가지](https://yeonu69.github.io/DataNetwork4AI/sim/ch05/multiaccess.html)<br>[PFC와 ECN](https://yeonu69.github.io/DataNetwork4AI/sim/ch05/pfc.html) |
+| 6장 이더넷과 프레임 | [패리티와 CRC](https://yeonu69.github.io/DataNetwork4AI/sim/ch06/index.html)<br>[MAC 주소 분석기](https://yeonu69.github.io/DataNetwork4AI/sim/ch06/mac.html)<br>[이더넷 프레임 만들기](https://yeonu69.github.io/DataNetwork4AI/sim/ch06/frame.html)<br>[해밍 코드 오류 정정](https://yeonu69.github.io/DataNetwork4AI/sim/ch06/hamming.html)<br>[토큰링](https://yeonu69.github.io/DataNetwork4AI/sim/ch06/token.html) |
+| 7장 스위치와 VLAN | [스위치 MAC 학습](https://yeonu69.github.io/DataNetwork4AI/sim/ch07/index.html)<br>[충돌·브로드캐스트 도메인](https://yeonu69.github.io/DataNetwork4AI/sim/ch07/domain.html)<br>[루프와 스패닝 트리](https://yeonu69.github.io/DataNetwork4AI/sim/ch07/stp.html)<br>[VLAN과 트렁크](https://yeonu69.github.io/DataNetwork4AI/sim/ch07/vlan.html)<br>[리프-스파인 구조](https://yeonu69.github.io/DataNetwork4AI/sim/ch07/leafspine.html) |
+| 8장 무선 네트워크 | [Wi-Fi 채널 배치와 로밍](https://yeonu69.github.io/DataNetwork4AI/sim/ch08/index.html)<br>[Wi-Fi 연결 3단계](https://yeonu69.github.io/DataNetwork4AI/sim/ch08/join.html)<br>[Wi-Fi 체감 속도](https://yeonu69.github.io/DataNetwork4AI/sim/ch08/rate.html)<br>[셀룰러 핸드오버](https://yeonu69.github.io/DataNetwork4AI/sim/ch08/handover.html)<br>[근거리 무선 고르기](https://yeonu69.github.io/DataNetwork4AI/sim/ch08/shortrange.html) |
+| 9장 IP 주소와 서브네팅 | [서브넷 계산기](https://yeonu69.github.io/DataNetwork4AI/sim/ch09/index.html)<br>[2진수와 AND 연산](https://yeonu69.github.io/DataNetwork4AI/sim/ch09/binary.html)<br>[같은 네트워크일까?](https://yeonu69.github.io/DataNetwork4AI/sim/ch09/samenet.html)<br>[서브넷 나누기](https://yeonu69.github.io/DataNetwork4AI/sim/ch09/split.html)<br>[VLSM 설계기](https://yeonu69.github.io/DataNetwork4AI/sim/ch09/vlsm.html) |
+| 10장 ARP, ICMP, MTU | [traceroute와 TTL](https://yeonu69.github.io/DataNetwork4AI/sim/ch10/index.html)<br>[ARP 요청과 캐시](https://yeonu69.github.io/DataNetwork4AI/sim/ch10/arp.html)<br>[ping 통계](https://yeonu69.github.io/DataNetwork4AI/sim/ch10/ping.html)<br>[MTU와 단편화](https://yeonu69.github.io/DataNetwork4AI/sim/ch10/mtu.html) |
+| 11장 라우팅 | [최단 경로(다익스트라)](https://yeonu69.github.io/DataNetwork4AI/sim/ch11/index.html)<br>[라우팅 테이블과 최장 일치](https://yeonu69.github.io/DataNetwork4AI/sim/ch11/lpm.html)<br>[거리 벡터(RIP)](https://yeonu69.github.io/DataNetwork4AI/sim/ch11/dv.html)<br>[정적 vs 동적 라우팅](https://yeonu69.github.io/DataNetwork4AI/sim/ch11/failover.html)<br>[ECMP와 코끼리 흐름](https://yeonu69.github.io/DataNetwork4AI/sim/ch11/ecmp.html) |
+| 12장 DHCP, NAT, IPv6 | [NAT 변환 표](https://yeonu69.github.io/DataNetwork4AI/sim/ch12/index.html)<br>[DHCP DORA와 임대](https://yeonu69.github.io/DataNetwork4AI/sim/ch12/dhcp.html)<br>[포트 포워딩](https://yeonu69.github.io/DataNetwork4AI/sim/ch12/portfwd.html)<br>[IPv6 주소 줄이기](https://yeonu69.github.io/DataNetwork4AI/sim/ch12/ipv6.html) |
+| 13장 전송 계층 | [TCP 혼잡 제어](https://yeonu69.github.io/DataNetwork4AI/sim/ch13/index.html)<br>[포트와 소켓](https://yeonu69.github.io/DataNetwork4AI/sim/ch13/ports.html)<br>[소켓 프로그래밍 모의실습](https://yeonu69.github.io/DataNetwork4AI/sim/ch13/socket.html)<br>[UDP와 TCP 비교](https://yeonu69.github.io/DataNetwork4AI/sim/ch13/udptcp.html)<br>[3-way와 4-way](https://yeonu69.github.io/DataNetwork4AI/sim/ch13/handshake.html)<br>[ARQ 3가지](https://yeonu69.github.io/DataNetwork4AI/sim/ch13/arq.html)<br>[슬라이딩 윈도와 흐름 제어](https://yeonu69.github.io/DataNetwork4AI/sim/ch13/window.html)<br>[꼬리 지연](https://yeonu69.github.io/DataNetwork4AI/sim/ch13/tail.html) |
+| 14장 응용 서비스와 보안 | [DNS 이름 풀이](https://yeonu69.github.io/DataNetwork4AI/sim/ch14/index.html)<br>[HTTP 요청과 응답](https://yeonu69.github.io/DataNetwork4AI/sim/ch14/http.html)<br>[HTTPS가 숨기는 것](https://yeonu69.github.io/DataNetwork4AI/sim/ch14/tls.html)<br>[암호의 기초](https://yeonu69.github.io/DataNetwork4AI/sim/ch14/crypto.html)<br>[방화벽 규칙](https://yeonu69.github.io/DataNetwork4AI/sim/ch14/firewall.html)<br>[로드밸런싱](https://yeonu69.github.io/DataNetwork4AI/sim/ch14/lb.html) |
+| 15장 AI 시대의 네트워크 | [링 올리듀스](https://yeonu69.github.io/DataNetwork4AI/sim/ch15/index.html)<br>[비차단 설계 계산기](https://yeonu69.github.io/DataNetwork4AI/sim/ch15/oversub.html)<br>[레일 최적화](https://yeonu69.github.io/DataNetwork4AI/sim/ch15/rail.html)<br>[장애는 일상이다](https://yeonu69.github.io/DataNetwork4AI/sim/ch15/failure.html)<br>[AI는 어디서 실행될까](https://yeonu69.github.io/DataNetwork4AI/sim/ch15/where.html) |
